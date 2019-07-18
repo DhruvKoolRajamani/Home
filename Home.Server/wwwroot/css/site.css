@@ -1,0 +1,179 @@
+﻿/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
+for details on configuring this project to bundle and minify static web assets. */
+
+a.navbar-brand {
+    white-space: normal;
+    text-align: center;
+    word-break: break-all;
+}
+
+/* Tank Animation
+---------------------------------------------------*/
+.tank {
+    width: 120px;
+    height: 150px;
+    border: 2px solid black;
+    background: white;
+    position: relative;
+    display: inline-block;
+    margin: 10px;
+}
+
+    .tank .water {
+        position: absolute;
+        background: blue;
+        width: 100%;
+        bottom: 0;
+    }
+
+.pump {
+    display: block;
+    justify-content: center;
+    align-items: center;
+}
+
+.pumpstatus {
+    width: 200px;
+    height: 40px;
+    border: 2px solid black;
+    background: white;
+    position: relative;
+    display: inline-block;
+    margin: 10px;
+}
+
+    .pumpstatus .onstate {
+        position: absolute;
+        background: green;
+        width: 100%;
+    }
+
+    .pumpstatus .offstate {
+        position: absolute;
+        background: red;
+        width: 100%;
+    }
+
+.slidecontainer {
+    width: 100%;
+}
+
+.slider {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 75%;
+    height: 25px;
+    background: #d3d3d3;
+    outline: none;
+    opacity: 0.7;
+    -webkit-transition: .2s;
+    transition: opacity .2s;
+}
+
+    .slider:hover {
+        opacity: 1;
+    }
+
+    .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 25px;
+        height: 25px;
+        background: #4CAF50;
+        cursor: pointer;
+    }
+
+/* Sticky footer styles
+-------------------------------------------------- */
+html {
+    font-size: 14px;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    .pump {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+        .pump .pumpstatus {
+            width: 120px;
+            height: 30px;
+            border: 2px solid black;
+            background: red;
+            position: relative;
+            display: inline-block;
+            margin: 10px;
+        }
+
+    .slidecontainer {
+        width: 100%;
+    }
+
+    .slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 25px;
+        background: #d3d3d3;
+        outline: none;
+        opacity: 0.7;
+        -webkit-transition: .2s;
+        transition: opacity .2s;
+    }
+
+        .slider:hover {
+            opacity: 1;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            background: #4CAF50;
+            cursor: pointer;
+        }
+}
+
+.border-top {
+    border-top: 1px solid #e5e5e5;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.box-shadow {
+    box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
+}
+
+button.accept-policy {
+    font-size: 1rem;
+    line-height: inherit;
+}
+
+/* Sticky footer styles
+-------------------------------------------------- */
+html {
+    position: relative;
+    min-height: 100%;
+}
+
+body {
+    /* Margin bottom by footer height */
+    margin-bottom: 60px;
+}
+
+.footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    white-space: nowrap;
+    /* Set the fixed height of the footer here */
+    height: 60px;
+    line-height: 60px; /* Vertically center the text there */
+}

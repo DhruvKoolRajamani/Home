@@ -1,0 +1,93 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Kitchen";
+}
+
+<div class="text-center">
+    <div class="container">
+        <h1 class="display-4 text-center">Kitchen</h1>
+        <div class="row">
+            <div class="col-12 col-md-12">
+                <div class="row">
+                    <div class="col-12 col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <ul class="nav nav-tabs card-header-tabs nav-fill">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" href="#tanks" id="tanks-tab" data-toggle="tab" role="tab" aria-controls="tanks" aria-selected="true">Tanks</a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#vent" id="vent-tab" data-toggle="tab" role="tab" aria-controls="tanks" aria-selected="false">Vent</a>
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="tab-content card-body">
+                                <div id="tanks" class="tab-pane fade show active card-body" role="tabpanel" aria-labelledby="tanks-tab">
+                                    <div class="row">
+                                        <div class="col-md-6 col-12">
+                                            <div class="form-group">
+                                                <h3 style="text-align:center;">Upper Tank</h3>
+                                                <br />
+                                                <div style="display: flex; justify-content: center; align-items: center;">
+                                                    <div class="tank">
+                                                        <div id="upper_tank" class="water"></div>
+                                                    </div>
+                                                </div>
+                                                <br />
+                                                <a id="upper_tank_pump_on" class="btn btn-outline-success">Motor On</a>
+                                                <a id="upper_tank_pump_off" class="btn btn-outline-danger">Motor Off</a>
+                                                <div class="pump">
+                                                    <div id="upper_tank_status" class="pumpstatus" style="background:red;"></div>
+                                                </div>
+                                                <br />
+                                                <a id="upper_tank_music_stop" class="btn btn-outline-dark">Sound Off</a>
+                                                <br />
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-12">
+                                            <div class="form-group">
+                                                <h3 style="text-align:center;">Lower Tank</h3>
+                                                <br />
+                                                <div style="display: flex; justify-content: center; align-items: center;">
+                                                    <div class="tank">
+                                                        <div id="lower_tank" class="water"></div>
+                                                    </div>
+                                                </div>
+                                                <br />
+                                                <a id="lower_tank_pump_on" class="btn btn-outline-success">Booster On</a>
+                                                <a id="lower_tank_pump_off" class="btn btn-outline-danger">Booster Off</a>
+                                                <div class="pump">
+                                                    <div id="lower_tank_status" class="pumpstatus" style="background:red;"></div>
+                                                </div>
+                                                <br />
+                                                <a id="lower_tank_music_stop" class="btn btn-outline-dark">Sound Off</a>
+                                                <br />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="vent" class="tab-pane fade card-body" role="tabpanel" aria-labelledby="vent-tab">
+                                    <h3 style="text-align:center;">Vent</h3>
+                                    <br />
+                                    <div class="form-group">
+                                        <a id="vent_on" class="btn btn-outline-success">Vent On</a>
+                                        <a id="vent_off" class="btn btn-outline-danger">Vent Off</a>
+                                        <div class="pump">
+                                            <div id="vent_status" class="pumpstatus" style="background:red;"></div>
+                                        </div>
+                                        <br />
+                                        <div class="slidecontainer">
+                                            <input type="range" min="1" max="100" value="50" class="slider" id="ventRange">
+                                        </div>
+                                        <p id="ventValue"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
