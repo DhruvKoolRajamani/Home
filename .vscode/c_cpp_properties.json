@@ -4,13 +4,36 @@
             "name": "Win32",
             "includePath": [
                 "C:\\Users\\dkr73\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
-                "C:\\Users\\dkr73\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.5.2\\**"
+                "C:\\Users\\dkr73\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.5.2\\**",
+                "/home/kingmoney/.arduino15/packages/esp8266/hardware/esp8266/2.5.2/**",
+                "/home/kingmoney/.arduino15/packages/esp8266/tools/**"
             ],
             "forcedInclude": [],
             "intelliSenseMode": "msvc-x64",
             "compilerPath": "C:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.21.27702/bin/Hostx64/x64/cl.exe",
             "cStandard": "c11",
             "cppStandard": "c++17"
+        },
+        {
+            "name": "Linux",
+            "includePath": [
+                "/home/kingmoney/Arduino/libraries/DeviceMessage",
+                "/home/kingmoney/Arduino/libraries/Protocol/",
+                "/home/kingmoney/dotnet_ws/Home/libraries/Protocol/",
+                "/home/kingmoney/Arduino/libraries/Time",
+                "/home/kingmoney/Arduino/libraries/tinyxml2",
+                "/home/kingmoney/Downloads/Arduino/arduino-1.8.9/**",
+                "/home/kingmoney/Arduino/libraries/ArduinoJson/src",
+                "/home/kingmoney/Arduino/libraries/WebSockets/src",
+                "/home/kingmoney/.arduino15/packages/esp8266/tools/**",
+                "/home/kingmoney/.arduino15/packages/esp8266/hardware/esp8266/2.5.2/**",
+                "${workspaceFolder}/Kitchen/Arduino/websocket_client",
+                "${workspaceFolder}/libraries/DeviceMessage/**"
+            ],
+            "forcedInclude": [],
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c11"
         }
     ],
     "version": 4

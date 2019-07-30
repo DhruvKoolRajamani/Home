@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Home.Server
 {
@@ -16,16 +17,16 @@ namespace Home.Server
         public static void Main(string[] args)
         {
             var host = new HostBuilder()
+                        .UseDefaultServiceProvider((context, options) =>
+                        {
+                            options.ValidateScopes = true;
+                        })
                         .ConfigureWebHostDefaults(webBuilder =>
                         {
                             webBuilder.UseStartup<Startup>();
                             webBuilder.UseWebRoot(Directory.GetCurrentDirectory().ToString() + "/wwwroot");
                             webBuilder.UseUrls("http://192.168.1.13:5000/");
                             webBuilder.UseIISIntegration();
-                        })
-                        .UseDefaultServiceProvider((context, options) =>
-                        {
-                            options.ValidateScopes = true;
                         })
                         .Build();
 

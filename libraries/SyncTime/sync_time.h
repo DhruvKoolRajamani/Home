@@ -1,7 +1,7 @@
 #include <TimeLib.h>
-#include </home/kingmoney/.arduino15/packages/esp8266/hardware/esp8266/2.5.2/libraries/ESP8266WiFi/src/ESP8266WiFi.h>
-#include </home/kingmoney/.arduino15/packages/esp8266/hardware/esp8266/2.5.2/libraries/ESP8266WiFi/src/WiFiUdp.h>
-#include <Arduino.h>
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+// #include <Arduino.h>
 
 IPAddress timeServer(139, 59, 50, 38);
 const float timeZone = 5.5;
@@ -10,6 +10,8 @@ WiFiUDP Udp;
 unsigned int localPort = 8888;
 
 char strGlob[250];
+
+/*-------- NTP code ----------*/
 
 const int NTP_PACKET_SIZE = 48;     // NTP time is in the first 48 bytes of message
 byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
@@ -68,21 +70,15 @@ void processStringTime(char *strTime)
 {
     char strStatic1[250];
     char strStatic2[250];
-    int time;
+    int tm;
     int parsedTime[7];
-    int year;
-    int month;
-    int date;
-    int hours;
-    int minutes;
-    int seconds;
     strcpy(strStatic1, strTime);
     strcpy(strStatic2, strTime);
     String sTemp1 = strStatic1;
     String sTemp2 = strStatic2;
 
     sTemp1 = sTemp1.substring(0, sTemp1.indexOf(":"));
-    sTemp2 = sTemp2.substring(sTemp2.indexOf(":")+1, sTemp2.length());
+    sTemp2 = sTemp2.substring(sTemp2.indexOf(":") + 1, sTemp2.length());
 
     for (int i = 0; i < 2; i++)
     {
@@ -102,12 +98,6 @@ void processStringTime(char *strTime)
     }
 
     setTime(parsedTime[3], parsedTime[4], parsedTime[5], parsedTime[2], parsedTime[1], parsedTime[0]);
-
-    // for (int i = 0; i < 7; i++)
-    // {
-    //     Serial.printf("\t%d", parsedTime[i]);
-    // }
-    // Serial.println();
 }
 
 void setNTPTime()

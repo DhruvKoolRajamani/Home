@@ -4,6 +4,28 @@
 // Write your Javascript code.
 "use strict";
 
+function onRangeChange(rangeInputElmt, listener) {
+
+    var inputEvtHasNeverFired = true;
+
+    var rangeValue = { current: undefined, mostRecent: undefined };
+
+    rangeInputElmt.addEventListener("input", function (evt) {
+        inputEvtHasNeverFired = false;
+        rangeValue.current = evt.target.value;
+        if (rangeValue.current !== rangeValue.mostRecent) {
+            listener(evt);
+        }
+        rangeValue.mostRecent = rangeValue.current;
+    });
+
+    rangeInputElmt.addEventListener("change", function (evt) {
+        if (inputEvtHasNeverFired) {
+            listener(evt);
+        }
+    });
+}
+
 $(document).ready(function () {
 
     var _upperTankPumpOn = $("#upper_tank_pump_on");
@@ -12,8 +34,11 @@ $(document).ready(function () {
     var _lowerTankPumpOn = $('#lower_tank_pump_on');
     var _lowerTankPumpOff = $('#lower_tank_pump_off');
 
-    var _upperTankMusicStop = $('#upper_tank_music_stop');
-    var _lowerTankMusicStop = $('#lower_tank_music_stop');
+    // var _upperTankMusicStop = $('#upper_tank_music_stop');
+    // var _lowerTankMusicStop = $('#lower_tank_music_stop');
+
+    var _ventOn = $("#vent_on");
+    var _ventOff = $("#vent_off");
 
     var _upperTankSoundState = true;
     var _lowerTankSoundState = true;
@@ -24,30 +49,12 @@ $(document).ready(function () {
     var _upperTankPumpState = false;
     var _lowerTankPumpState = false;
 
+    var _ventState = false;
+    var _ventSpeed = 50;
+    var _ventCalibrationState = false;
+
     var slider = document.getElementById("ventRange");
     var output = document.getElementById("ventValue");
-
-    var _upperTankSound = new Howl({
-        src: ['./audio/alert1.mp3'],
-        volume: 0.7,
-        onend: function () {
-            console.log('Finished!');
-        }
-    });
-
-    var _lowerTankSound = new Howl({
-        src: ['./audio/alert.mp3'],
-        volume: 0.7,
-        onend: function () {
-            console.log('Finished!');
-        }
-    });
-
-    output.innerHTML = slider.value;
-
-    slider.oninput = function () {
-        output.innerHTML = this.value;
-    }
 
     let connection = new signalR.HubConnectionBuilder()
         .withUrl("/kitchen")
@@ -73,6 +80,24 @@ $(document).ready(function () {
         .catch(function (err) {
             return console.error(err.toString());
         });
+
+    connection.on("ventStatus", function (ventState, ventSpeed, ventCalibrationState) {
+        _ventState = ventState;
+        _ventSpeed = ventSpeed;
+        _ventCalibrationState = ventCalibrationState;
+
+        if (_ventState)
+            document.getElementById("vent_status").style.background = "green";
+        else
+            document.getElementById("vent_status").style.background = "red";
+
+        if (ventSpeed >= 0 && ventSpeed <= 100)
+            slider.value = ventSpeed;
+
+        console.log('Vent State', _ventState);
+        console.log('Vent Speed', _ventSpeed);
+        console.log('Vent Calibration State', _ventCalibrationState);
+    });
 
     connection.on("upperTankPumpStatus", function (upperTankPumpState) {
         _upperTankPumpState = upperTankPumpState;
@@ -105,17 +130,17 @@ $(document).ready(function () {
         if (upperLevel >= 1) {
             _upperTankDepth = 100;
 
-            if (_upperTankSoundState) {
-                _upperTankSound.play();
-            }
+            // if (_upperTankSoundState) {
+            //     _upperTankSound.play();
+            // }
         }
 
         if (lowerLevel >= 1) {
             _lowerTankDepth = 100;
 
-            if (_lowerTankSoundState) {
-                _lowerTankSound.play();
-            }
+            // if (_lowerTankSoundState) {
+            //     _lowerTankSound.play();
+            // }
         }
 
         if (upperLevel <= 0)
@@ -130,6 +155,109 @@ $(document).ready(function () {
         console.log('Getting Levels: ' + _upperTankDepth + " : " + _lowerTankDepth);
     });
 
+    function ventCommand(state = false, speed = 50) {
+        _ventSpeed = speed;
+        _ventState = state;
+
+        console.log("Vent State: ", _ventState);
+        console.log("Setting Default Speed: ", _ventSpeed);
+        console.log("Calibration State: ", _ventCalibrationState);
+
+        connection.invoke("setVentState", Boolean(_ventState), Number(_ventSpeed), Boolean(_ventCalibrationState));
+    }
+
+    var myNumEvts = { input: 0, change: 0, custom: 0 };
+
+    ["input", "change"].forEach(function (myEvtType) {
+        slider.addEventListener(myEvtType, function () {
+            myNumEvts[myEvtType] += 1;
+        });
+    });
+
+    var myListener = function (myEvt) {
+        myNumEvts["custom"] += 1;
+        output.innerHTML = "range value: " + myEvt.target.value;
+        ventCommand(true, myEvt.target.value);
+    };
+
+    onRangeChange(slider, myListener);
+
+    // var _upperTankSound = new Howl({
+    //     src: ['./audio/alert1.mp3'],
+    //     volume: 0.7,
+    //     onend: function () {
+    //         console.log('Finished!');
+    //     }
+    // });
+
+    // var _lowerTankSound = new Howl({
+    //     src: ['./audio/alert.mp3'],
+    //     volume: 0.7,
+    //     onend: function () {
+    //         console.log('Finished!');
+    //     }
+    // });
+
+    // output.innerHTML = slider.value;
+
+    // slider.oninput = function () {
+    //     output.innerHTML = this.value;
+    // }
+
+    $(_ventOn).click(function () {
+        console.log('Vent ON');
+        ventCommand(true);
+    });
+
+    $(_ventOff).click(function () {
+        console.log('Vent OFF');
+        ventCommand(false, 0);
+    });
+
+    $(_upperTankPumpOn).click(function () {
+        _upperTankPumpState = true;
+        _upperTankSoundState = true;
+        console.log("Upper Tank Pump State: ", _upperTankPumpState);
+
+        connection.invoke("setUpperTankPumpState", _upperTankPumpState);
+    });
+
+    $(_upperTankPumpOff).click(function () {
+        _upperTankPumpState = false;
+        _upperTankSoundState = false;
+        console.log("Upper Tank Pump State: ", _upperTankPumpState);
+
+        // _upperTankSound.stop();
+        connection.invoke("setUpperTankPumpState", _upperTankPumpState);
+    });
+
+    $(_lowerTankPumpOn).click(function () {
+        _lowerTankPumpState = true;
+        _lowerTankSoundState = true;
+        console.log("Lower Tank Pump State: ", _lowerTankPumpState);
+
+        connection.invoke("setLowerTankPumpState", _lowerTankPumpState);
+    });
+
+    $(_lowerTankPumpOff).click(function () {
+        _lowerTankPumpState = false;
+        _lowerTankSoundState = false;
+        console.log("Lower Tank Pump State: ", _lowerTankPumpState);
+
+        // _lowerTankSound.stop();
+        connection.invoke("setLowerTankPumpState", _lowerTankPumpState);
+    });
+
+    // $(_upperTankMusicStop).click(function () {
+    //     _upperTankSoundState = false;
+    //     _upperTankSound.stop();
+    // });
+
+    // $(_lowerTankMusicStop).click(function () {
+    //     _lowerTankSoundState = false;
+    //     _lowerTankSound.stop();
+    // });
+
     function onStarted() {
 
         connection.invoke("getTankLevels").catch(function (err) {
@@ -140,48 +268,8 @@ $(document).ready(function () {
             return console.error(err.toString());
         });
 
-        $(_upperTankPumpOn).click(function () {
-            _upperTankPumpState = true;
-            _upperTankSoundState = true;
-            console.log("Upper Tank Pump State: ", _upperTankPumpState);
-
-            connection.invoke("setUpperTankPumpState", _upperTankPumpState);
+        connection.invoke("getVentState").catch(function (err) {
+            return console.error(err.toString());
         });
-
-        $(_upperTankPumpOff).click(function () {
-            _upperTankPumpState = false;
-            _upperTankSoundState = false;
-            console.log("Upper Tank Pump State: ", _upperTankPumpState);
-
-            _upperTankSound.stop();
-            connection.invoke("setUpperTankPumpState", _upperTankPumpState);
-        });
-
-        $(_lowerTankPumpOn).click(function () {
-            _lowerTankPumpState = true;
-            _lowerTankSoundState = true;
-            console.log("Lower Tank Pump State: ", _lowerTankPumpState);
-
-            connection.invoke("setLowerTankPumpState", _lowerTankPumpState);
-        });
-
-        $(_lowerTankPumpOff).click(function () {
-            _lowerTankPumpState = false;
-            _lowerTankSoundState = false;
-            console.log("Lower Tank Pump State: ", _lowerTankPumpState);
-
-            _lowerTankSound.stop();
-            connection.invoke("setLowerTankPumpState", _lowerTankPumpState);
-        });
-
-        $(_upperTankMusicStop).click(function () {
-            _upperTankSoundState = false;
-            _upperTankSound.stop();
-        })
-
-        $(_lowerTankMusicStop).click(function () {
-            _lowerTankSoundState = false;
-            _lowerTankSound.stop();
-        })
     }
 });

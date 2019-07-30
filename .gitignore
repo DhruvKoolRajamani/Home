@@ -341,3 +341,9 @@ healthchecksdb
 
 # Ignore VSCode files
 .vscode/
+
+# Ignore cpp Build files
+[Bb]uild/
+
+# Ignore lua build files
+*.out

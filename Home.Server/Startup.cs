@@ -13,6 +13,8 @@ using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Home.Server.Daemons;
+using Devices;
 
 // LOGGING_HEADERS
 using Microsoft.Extensions.Logging;
@@ -29,6 +31,10 @@ namespace Home.Server
         }
 
         public IConfiguration Configuration { get; }
+        public Kitchen KitchenDaemon { get; set; }
+        public static Microcontroller kitchenArduino = new Microcontroller() { IPAddress = "192.168.1.25", Id = 0, Room = "Kitchen", UdpPort = 4210 };
+        public static Microcontroller kitchenNodeMcu = new Microcontroller() { IPAddress = "192.168.1.26", Id = 1, Room = "Kitchen", UdpPort = 4211 };
+        public static List<Microcontroller> kitchenMcus = new List<Microcontroller>() { kitchenArduino, kitchenNodeMcu };
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -39,7 +45,10 @@ namespace Home.Server
                 options.CheckConsentNeeded = context => true;
             });
 
+            // services.AddSingleton<IHostedService, Kitchen>();
             services.AddSingleton<IKitchenRepo, KitchenRepo>();
+            services.AddSingleton<List<Microcontroller>>(kitchenMcus);
+            services.AddHostedService<Kitchen>();
             services.AddSignalR().AddJsonProtocol(options => options.PayloadSerializerOptions.WriteIndented = true);
 
 #if CORS_ENABLED
@@ -61,6 +70,8 @@ namespace Home.Server
 #endif
 
             services.AddRazorPages();
+
+            // var kitchen = services.BuildServiceProvider().GetService<Kitchen>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -77,7 +88,7 @@ namespace Home.Server
                 app.UseHsts();
             }
 
-            //app.UseHttpsRedirection();
+            // app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseCookiePolicy();
