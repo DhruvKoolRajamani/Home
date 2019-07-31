@@ -28,6 +28,8 @@ function onRangeChange(rangeInputElmt, listener) {
 
 $(document).ready(function () {
 
+    changeWeather(weather[Math.random() * 3])
+
     var _upperTankPumpOn = $("#upper_tank_pump_on");
     var _upperTankPumpOff = $("#upper_tank_pump_off");
 
@@ -39,6 +41,13 @@ $(document).ready(function () {
 
     var _ventOn = $("#vent_on");
     var _ventOff = $("#vent_off");
+
+    var _tempDiv = $("#temperature.temp");
+    console.log("NOW: " + _tempDiv.html());
+    var _humDiv = $("#humidity");
+
+    var _temp = 0.0;
+    var _humidity = 0.0;
 
     var _upperTankSoundState = true;
     var _lowerTankSoundState = true;
@@ -117,6 +126,27 @@ $(document).ready(function () {
         else
             document.getElementById("lower_tank_status").style.background = "red";
         console.log('Lower Tank State: ', _lowerTankPumpState);
+    });
+
+    connection.on("weatherData", function (temp, humidity) {
+        _temp = temp;
+        _humidity = humidity;
+
+        if (_humidity > 80)
+            changeWeather(weather[2]);
+        else if (_humidity > 95)
+            changeWeather(weather[3]);
+        else
+            changeWeather(weather[0]);
+        var currentdate = new Date();
+        var dt = currentdate.getDate().toString() + "/" + (currentdate.getMonth()).toString(); /*+ "/" + currentdate.getFullYear().toString();*/
+        _tempDiv.html(
+            _temp.toString() + "<span>c</span></div>" + 
+            "<div class=\"right\"><div id=\"date\">" + dt + 
+            "</div><div id=\"summary\">" + currentWeather.name + 
+            "</div></div>");
+
+        // console.log("Received Humidity " + _humidity + " and temperature " + _temp);
     });
 
     connection.on("onNotification", function (message) {
@@ -269,6 +299,10 @@ $(document).ready(function () {
         });
 
         connection.invoke("getVentState").catch(function (err) {
+            return console.error(err.toString());
+        });
+
+        connection.invoke("sendWeatherData").catch(function (err) {
             return console.error(err.toString());
         });
     }

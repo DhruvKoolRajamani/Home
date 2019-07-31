@@ -23,6 +23,10 @@ using Microsoft.Extensions.Logging.Debug;
 
 namespace Home.Server
 {
+    public static class ConnectionExtension
+    {
+        public static string LocalIP = "http://192.168.1.13:5000/";
+    }
     public class Startup
     {
         public Startup(IConfiguration configuration)
@@ -57,7 +61,7 @@ namespace Home.Server
             {
                 builder.AllowAnyMethod()
                        .AllowAnyHeader()
-                       .WithOrigins("http://192.168.1.13:5000")
+                       .WithOrigins(ConnectionExtension.LocalIP)
                        .AllowCredentials();
             }));
 #endif

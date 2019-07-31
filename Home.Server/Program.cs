@@ -25,7 +25,7 @@ namespace Home.Server
                         {
                             webBuilder.UseStartup<Startup>();
                             webBuilder.UseWebRoot(Directory.GetCurrentDirectory().ToString() + "/wwwroot");
-                            webBuilder.UseUrls("http://192.168.1.13:5000/");
+                            webBuilder.UseUrls(ConnectionExtension.LocalIP);
                             webBuilder.UseIISIntegration();
                         })
                         .Build();

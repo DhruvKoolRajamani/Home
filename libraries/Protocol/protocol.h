@@ -32,13 +32,13 @@ char msgPack[5][256];
 // Since protocol has only 4 '.' separators, splitting the string can be hardcoded
 bool searchForLength(int len, char *msg)
 {
-    char delim[] = ".";
+    char delim[] = "^";
     int i = 0;
 
     char *pMsg = msg;
     char *pMsgPack;
 
-    // Split string based on '.' serparators
+    // Split string based on '^' serparators
     pMsg = strtok(msg, delim);
     pMsgPack = msgPack[i];
     i++;
@@ -79,7 +79,7 @@ bool searchForLength(int len, char *msg)
 //                  Use '-' to separate data commands. eg. *.*.*.50-calibrated.*
 //      <len>       Length of message in bytes to provide idea about message loss
 //          |       Indicates end of message.
-void sendMessage(char* dType="vt", char* targetId="00", char *ack = "*", int state = -1, char *data = "*")
+void sendMessage(const char* dType="*", const char* targetId="*", const char *ack="*", int state = -1, const char *data="*")
 {
     // send back a reply, to the IP address and port we got the packet from
     char replyPacket[255];
@@ -93,9 +93,9 @@ void sendMessage(char* dType="vt", char* targetId="00", char *ack = "*", int sta
     {
         sprintf(st, "*");
     }
-    sprintf(pReply, "%s.%s%s.%s.%s.000|\0", ack, dType, targetId, st, data);
+    sprintf(pReply, "%s^%s%s^%s^%s^000|\0", ack, dType, targetId, st, data);
     int len = strlen(pReply);
-    sprintf(pReply, "%s.%s%s.%s.%s.%d|\0", ack, dType, targetId, st, data, len);
+    sprintf(pReply, "%s^%s%s^%s^%s^%d|\0", ack, dType, targetId, st, data, len);
 
     int count = 0;
     for (int i = 0; pReply[i] != '\0'; i++)

@@ -130,13 +130,13 @@ namespace Devices
             if (message[0] == 'N')
             {
                 // NACK received
-                var msg = message.Replace("N.", "*.");
+                var msg = message.Replace("N^", "*^");
                 SendMessage(mcu.Room, mcu.Id, msg);
             }
             else if (message[0] == '*')
             {
                 // Process Message as MCU to Server message
-                Debug.WriteLine($"Do Something with : {message}");
+                // Debug.WriteLine($"Do Something with : {message}");
                 ProcessMessage(message);
             }
             else if (message[0] == 'A')

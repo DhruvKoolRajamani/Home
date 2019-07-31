@@ -1,10 +1,23 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Devices;
 using static Devices.DevicesExtensions;
 
 namespace Home.Server.Daemons
 {
+    public class DepthChangedEventArgs : EventArgs
+    {
+        public float Depth { get; set; }
+        public int TankID { get; set; }
+
+        public DepthChangedEventArgs(float depth, int id)
+        {
+            TankID = id;
+            Depth = depth;
+        }
+    }
+
     public class Vent : IDevice
     {
         public Vent()
@@ -61,11 +74,10 @@ namespace Home.Server.Daemons
         public string Name { get => deviceName; set => deviceName = value; }
         public List<int> DeviceIds { get => deviceIds; private set => deviceIds = value; }
 
-        public event Action OnDepthChange = delegate { };
-        public void Raise()
+        public event EventHandler<DepthChangedEventArgs> OnDepthChanged = delegate { };
+        public void RaiseDepthChangedEvent()
         {
-            //Invoke OnChange Action
-            OnDepthChange();
+            OnDepthChanged(this, new DepthChangedEventArgs(Depth, Id));
         }
     }
 
@@ -77,5 +89,25 @@ namespace Home.Server.Daemons
         public bool State { get => state; set => state = value; }
         public int Id { get => id; set => id = value; }
         public string Name { get => name; set => name = value; }
+    }
+
+    public class DHT11 : IDevice
+    {
+        private bool state;
+        private int id;
+        private string name;
+        private float temp;
+        private float humidity;
+        public bool State { get => state; set => state = value; }
+        public int Id { get => id; set => id = value; }
+        public string Name { get => name; set => name = value; }
+        public float Temp { get => temp; set => temp = value; }
+        public float Humidity { get => humidity; set => humidity = value; }
+
+        public event EventHandler<EventArgs> OnWeatherDataChanged = delegate { };
+        public void RaiseWeatherDataChangedEvent()
+        {
+            OnWeatherDataChanged(this, new EventArgs());
+        }
     }
 }

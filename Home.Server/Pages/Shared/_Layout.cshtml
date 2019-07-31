@@ -15,6 +15,7 @@
               crossorigin="anonymous"
               integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" />
     </environment>
+    <link rel="stylesheet" href="~/css/weather.css" />
     <link rel="stylesheet" href="~/css/site.css" />
 </head>
 <body>
@@ -45,13 +46,7 @@
             @RenderBody()
         </main>
     </div>
-
-    <footer class="border-top footer text-muted">
-        <div class="container">
-            &copy; 2019 - Home - <a asp-area="" asp-page="/Privacy">Privacy</a>
-        </div>
-    </footer>
-
+    
     <environment include="Development">
         <script src="~/lib/jquery/dist/jquery.js"></script>
         <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.js"></script>
@@ -72,6 +67,9 @@
     </environment>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.1.1/howler.min.js" asp-append-version="true"></script>
     <script src="~/lib/signalr/dist/browser/signalr.js" asp-append-version="true"></script>
+    <script src="~/js/snap.svg-min.js" asp-append-version="true"></script>
+    <script src="~/js/TweenMax.min.js" asp-append-version="true"></script>
+    <script src="~/js/weather.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
     @RenderSection("Scripts", required: false)

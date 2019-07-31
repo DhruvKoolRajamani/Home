@@ -29,6 +29,7 @@ namespace Home.Server.Hubs
         private Tank _UpperTank;
         private Tank _LowerTank;
         private Vent _Vent;
+        private DHT11 _DHT11;
 
         //Hub Constructor to store data obtained from constructor call in the repositories
         public KitchenHub(IKitchenRepo kitchenRepo, IHostedService kitchen) //, IVentMotorRepo ventMotorRepo)
@@ -38,6 +39,7 @@ namespace Home.Server.Hubs
             _UpperTank = kitchenRepo.UpperTank;
             _LowerTank = kitchenRepo.LowerTank;
             _Vent = kitchenRepo.ChimneyVent;
+            _DHT11 = kitchenRepo.Dht11;
         }
 
         public async Task GetPumpStates()
@@ -117,6 +119,11 @@ namespace Home.Server.Hubs
         public async Task GetTankLevels()
         {
             await Clients.All.SendAsync("Levels", _UpperTank.Depth, _LowerTank.Depth);
+        }
+
+        public async Task SendWeatherData()
+        {
+            await Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
         }
     }
 }
