@@ -66,7 +66,8 @@ namespace Home.Server.Hubs
 
         public async Task SetUpperTankPumpState(bool upperTankPumpState)
         {
-            _UpperTank.State = upperTankPumpState;
+            _kitchenRepo.UpperTank.State = upperTankPumpState;
+            _kitchenRepo.UpperTank.RaiseTankStatusChangedEvent(upperTankPumpState);
             _kitchen.SetTankStatus(_kitchenRepo.UpperTank.Id, upperTankPumpState);
 
             Debug.WriteLine($"Upper Tank Pump State: {_UpperTank.State}");
@@ -76,7 +77,8 @@ namespace Home.Server.Hubs
 
         public async Task SetLowerTankPumpState(bool lowerTankPumpState)
         {
-            _LowerTank.State = lowerTankPumpState;
+            _kitchenRepo.LowerTank.State = lowerTankPumpState;
+            _kitchenRepo.LowerTank.RaiseTankStatusChangedEvent(lowerTankPumpState);
             _kitchen.SetTankStatus(_kitchenRepo.LowerTank.Id, lowerTankPumpState);
 
             Debug.WriteLine($"Lower Tank Pump State: {_LowerTank.State}");

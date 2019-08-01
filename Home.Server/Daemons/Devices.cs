@@ -6,15 +6,22 @@ using static Devices.DevicesExtensions;
 
 namespace Home.Server.Daemons
 {
-    public class DepthChangedEventArgs : EventArgs
+    public class TankStatusChangedEventArgs : EventArgs
     {
         public float Depth { get; set; }
         public int TankID { get; set; }
+        public bool State { get; set; }
 
-        public DepthChangedEventArgs(float depth, int id)
+        public TankStatusChangedEventArgs(float depth, int id)
         {
             TankID = id;
             Depth = depth;
+        }
+
+        public TankStatusChangedEventArgs(bool state, int id)
+        {
+            State = state;
+            TankID = id;
         }
     }
 
@@ -74,10 +81,15 @@ namespace Home.Server.Daemons
         public string Name { get => deviceName; set => deviceName = value; }
         public List<int> DeviceIds { get => deviceIds; private set => deviceIds = value; }
 
-        public event EventHandler<DepthChangedEventArgs> OnDepthChanged = delegate { };
-        public void RaiseDepthChangedEvent()
+        public event EventHandler<TankStatusChangedEventArgs> OnTankStatusChanged = delegate { };
+        public void RaiseTankStatusChangedEvent(float depth)
         {
-            OnDepthChanged(this, new DepthChangedEventArgs(Depth, Id));
+            OnTankStatusChanged(this, new TankStatusChangedEventArgs(depth, Id));
+        }
+
+        public void RaiseTankStatusChangedEvent(bool state)
+        {
+            OnTankStatusChanged(this, new TankStatusChangedEventArgs(state, Id));
         }
     }
 

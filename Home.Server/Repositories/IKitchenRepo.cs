@@ -20,13 +20,13 @@ namespace Home.Server.Repositories
     {
         public KitchenRepo()
         {
-            UpperTank.OnDepthChanged += DepthChanged;
-            LowerTank.OnDepthChanged += DepthChanged;
+            UpperTank.OnTankStatusChanged += TankStatusChanged;
+            LowerTank.OnTankStatusChanged += TankStatusChanged;
         }
 
-        private void DepthChanged(object sender, DepthChangedEventArgs e)
+        private void TankStatusChanged(object sender, TankStatusChangedEventArgs e)
         {
-            
+            // _kitchen.SetTankStatus
         }
 
         private Tank upperTank = new Tank() { Id = 1, Name = "Upper Tank", State = false, Depth = 0.0f };

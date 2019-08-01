@@ -60,7 +60,7 @@ namespace Home.Server.Daemons
             }
         }
 
-        public void SetVentStatus(int id, bool state, int speed)
+        public async Task SetVentStatus(int id, bool state, int speed)
         {
             var vent = _VentList.FirstOrDefault(a => a.Id == id);
             if (vent != null)
@@ -76,7 +76,7 @@ namespace Home.Server.Daemons
             }
         }
 
-        public void SetTankStatus(int id, bool state)
+        public async Task SetTankStatus(int id, bool state)
         {
             var tank = _TankList.FirstOrDefault(a => a.Id == id);
             if (tank != null)
@@ -87,12 +87,7 @@ namespace Home.Server.Daemons
                 string msg = $"*^{sId}^{st}^*^000|"; // Ack.id.state.length
                 string chk = $"*^{sId}^{st}^*^{msg.Length - 1}|";
                 Debug.WriteLine(chk);
-                SendMessage("Kitchen", 1, chk);
-
-                if (id == 1)
-                    ProcessMessage("*^tk01^1^*^13|");
-                else if (id == 2)
-                    ProcessMessage("*^tk02^1^*^13|");
+                SendMessage("Kitchen", 0, chk);
             }
         }
 
@@ -142,13 +137,11 @@ namespace Home.Server.Daemons
                         case 1:
                             f += (f <= 1.0f) ? 0.01f : 0.0f;
                             tank1.Depth = f;
-                            tank1.RaiseDepthChangedEvent();
                             Debug.WriteLine($"Upper Tank Depth: {tank1.Depth}");
                             break;
                         case 2:
                             f += (f <= 1.0f) ? 0.01f : 0.0f;
                             tank2.Depth = f;
-                            tank2.RaiseDepthChangedEvent();
                             Debug.WriteLine($"Lower Tank Depth: {tank2.Depth}");
                             break;
                         default:
@@ -164,24 +157,23 @@ namespace Home.Server.Daemons
                         int semC = data.IndexOf(';');
                         string humString = data.Substring(0, semC);
                         int H = humString.IndexOf(":");
-                        parseStatus = float.TryParse(humString.Substring(H+1, humString.Length - (H+1)), out humidity);
-                        if (parseStatus)
-                            Debug.WriteLine($"Humidity: {humidity}");
+                        parseStatus = float.TryParse(humString.Substring(H + 1, humString.Length - (H + 1)), out humidity);
+                        // if (parseStatus)
+                        //     Debug.WriteLine($"Humidity: {humidity}");
                         string tempString = data.Substring(semC + 1, data.Length - semC - 1);
                         int T = humString.IndexOf(":");
-                        parseStatus = float.TryParse(tempString.Substring(T+1, tempString.Length - (T+1)), out temperature);
-                        if (parseStatus)
-                            Debug.WriteLine($"Temperature: {temperature}");
+                        parseStatus = float.TryParse(tempString.Substring(T + 1, tempString.Length - (T + 1)), out temperature);
+                        // if (parseStatus)
+                        //     Debug.WriteLine($"Temperature: {temperature}");
                         _kitchenRepo.Dht11.Temp = temperature;
                         _kitchenRepo.Dht11.Humidity = humidity;
-                        _kitchenRepo.Dht11.RaiseWeatherDataChangedEvent();
                         _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
                     }
                     break;
                 default:
                     break;
             }
-
+            _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
             _kitchenHub.Clients.All.SendAsync("Levels", tank1.Depth, tank2.Depth);
         }
     }

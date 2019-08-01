@@ -41,7 +41,7 @@ namespace Devices
     {
         private List<Microcontroller> microcontroller;
         private List<UdpClient> udpClients = null;
-        private bool messageSent = false;
+        public static bool messageSent = false;
         public List<Microcontroller> Microcontroller { get => microcontroller; set => microcontroller = value; }
         public List<UdpClient> MUdpClient
         {
@@ -75,6 +75,15 @@ namespace Devices
                 {
                     Microcontroller.Where(m => (m == mcu)).FirstOrDefault().MUdpClient = new UdpClient(mcu.UdpPort);
                 }
+            }
+            try
+            {
+                foreach (var client in MUdpClient)
+                    client.BeginReceive(new AsyncCallback(OnUdpData), client);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"\nError: {ex.Message}\n");
             }
         }
 
@@ -165,6 +174,7 @@ namespace Devices
             mcu.MUdpClient.Send(sendBytes, sendBytes.Length, target);
             Debug.WriteLine($"Sent \n{Encoding.ASCII.GetString(sendBytes)}");
             Debug.WriteLine($"\nPacket Size: {sendBytes.Length}\n");
+            messageSent = true;
         }
 
         protected virtual void ProcessMessage(string message) { }
