@@ -14,10 +14,22 @@ namespace Gpio
     public class GpioEventArgs : EventArgs
     {
         public bool Level { get; set; }
+        public string DebugMessage { get; set; }
 
         public GpioEventArgs(bool level)
         {
             Level = level;
+        }
+
+        public GpioEventArgs(bool level, string msg)
+        {
+            Level = level;
+            DebugMessage = msg;
+        }
+
+        public GpioEventArgs(string msg)
+        {
+            DebugMessage = msg;
         }
     }
 
@@ -32,44 +44,43 @@ namespace Gpio
         public event EventHandler<GpioEventArgs> EventGpio = delegate { };
         public Pin()
         {
-            // _logger = logger;
             mre = new ManualResetEventSlim();
         }
 
         public string Init(PinMode driveMode, int gpioPinId)
         {
             GpioPinId = gpioPinId;
-            gpioController = new GpioController();
 
             // using (gpioController = new GpioController())
             // {
-                try
-                {
-                    gpioController.OpenPin(GpioPinId, driveMode);
+            try
+            {
+                gpioController = new GpioController();
+                gpioController.OpenPin(GpioPinId, driveMode);
 
-                    Debug.WriteLine($"Pin: {GpioPinId} is open and set to {driveMode}");
+                Debug.WriteLine($"Pin: {GpioPinId} is open and set to {driveMode}");
 
-                    if (driveMode == PinMode.Input)
-                    {
-                        gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
-                    }
-                    else if (driveMode == PinMode.InputPullUp)
-                    {
-                        gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
-                    }
-                    else if (driveMode == PinMode.InputPullDown)
-                    {
-                        gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
-                    }
-                    else if (driveMode == PinMode.Output)
-                    {
-                        gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
-                    }
-                }
-                catch (Exception ex)
+                if (driveMode == PinMode.Input)
                 {
-                    return ex.Message;
+                    gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
                 }
+                else if (driveMode == PinMode.InputPullUp)
+                {
+                    gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
+                }
+                else if (driveMode == PinMode.InputPullDown)
+                {
+                    gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
+                }
+                else if (driveMode == PinMode.Output)
+                {
+                    gpioController.Write(GpioPinId, PinValue.Low);
+                }
+            }
+            catch (Exception ex)
+            {
+                return ex.Message;
+            }
             // }
             return $"Initialized pin {gpioPinId} successfully";
         }
@@ -97,10 +108,16 @@ namespace Gpio
 
         private void callback(object sender, PinValueChangedEventArgs args)
         {
-            if (args.ChangeType == PinEventTypes.Rising)
-                EventGpio(this, new GpioEventArgs(true));
+            var value = gpioController.Read(args.PinNumber);
+
+            if (value == PinValue.High)
+            {
+                EventGpio(this, new GpioEventArgs(true, $"{GpioPinId} reads {value}"));
+            }
             else
-                Debug.WriteLine($"Received Falling Edge on pin {sender.ToString()} of type {sender.GetType()}");
+            {
+                EventGpio(this, new GpioEventArgs(false, $"{GpioPinId} reads {value}"));
+            }
         }
 
         private void delayMilli(double delay)

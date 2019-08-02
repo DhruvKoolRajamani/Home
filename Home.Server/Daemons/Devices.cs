@@ -10,6 +10,8 @@ namespace Home.Server.Daemons
     {
         private float depth = 0.0f;
         public int Level { get; set; }
+        public string DebugMessage { get; set; }
+
         public float Depth { get { return GetLevel(); } }
         public int TankID { get; set; }
         public bool State { get; set; }
@@ -24,6 +26,13 @@ namespace Home.Server.Daemons
         {
             State = state;
             TankID = id;
+        }
+
+        public TankStatusChangedEventArgs(int level, int id, string debugMessage)
+        {
+            TankID = id;
+            Level = level;
+            DebugMessage = debugMessage;
         }
 
         private float GetLevel()

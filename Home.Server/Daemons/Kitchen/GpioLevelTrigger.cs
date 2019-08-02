@@ -27,13 +27,14 @@ namespace Home.Server.Daemons
 
         public int TankId { get; set; }
 
+        public string GpioDebugString { get; set; }
+
         public string LogString { get; set; }
 
         public event EventHandler<TankStatusChangedEventArgs> EventTankStatusChanged = delegate { };
 
         public GpioLevelTrigger(int trigger, int level_1, int level_2, int level_3, int tankId)
         {
-            // _logger = logger;
             TankId = tankId;
 
             TRIGGER = trigger;
@@ -46,13 +47,27 @@ namespace Home.Server.Daemons
 
             gpioLevels = new Pin[3];
             gpioTrigger = new Pin();
-            
-            var log = gpioTrigger.Init(PinMode.Output, TRIGGER);
+
+            try
+            {
+                Debug.WriteLine(gpioTrigger.Init(PinMode.Output, TRIGGER));
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"{ex.Message}");
+            }
 
             for (int i = 0; i < 3; i++)
             {
                 gpioLevels[i] = new Pin();
-                var logstr = gpioLevels[i].Init(PinMode.InputPullDown, LevelPins[i]);
+                try
+                {
+                    Debug.WriteLine(gpioLevels[i].Init(PinMode.InputPullDown, LevelPins[i]));
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"{ex.Message}");
+                }
                 gpioLevels[i].EventGpio += TankStatusChange_EventGpio;
             }
             // throw new DevicesProtocolException(log);
@@ -60,19 +75,27 @@ namespace Home.Server.Daemons
 
         public void InitPins()
         {
-            gpioTrigger.Init(PinMode.Output, TRIGGER);
-            for (int i = 0; i < 3; i++)
+            try
             {
-                gpioLevels[i] = new Pin();
-                var logstr = gpioLevels[i].Init(PinMode.InputPullDown, LevelPins[i]);
-                // gpioLevels[i].EventGpio += TankStatusChange_EventGpio;
+                gpioTrigger.Init(PinMode.Output, TRIGGER);
+                for (int i = 0; i < 3; i++)
+                {
+                    gpioLevels[i] = new Pin();
+                    Debug.WriteLine(gpioLevels[i].Init(PinMode.InputPullDown, LevelPins[i]));
+                    gpioLevels[i].EventGpio += TankStatusChange_EventGpio;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine(ex.Message);
             }
         }
 
         private void TankStatusChange_EventGpio(object sender, GpioEventArgs e)
         {
             Pin gpio = sender as Pin;
-            if (e.Level)
+            GpioDebugString = e.DebugMessage;
+            if (e.Level) // bool
             {
                 if (gpio.GpioPinId == LevelPins[0])
                 {
@@ -90,6 +113,7 @@ namespace Home.Server.Daemons
                     Debug.WriteLine("Error");
 
                 _max = Math.Max(_max, n);
+                EventTankStatusChanged(this, new TankStatusChangedEventArgs(_max, TankId, GpioDebugString));
             }
         }
 
@@ -99,9 +123,7 @@ namespace Home.Server.Daemons
 
             Debug.WriteLine($"Trigger");
 
-            gpioTrigger.Pulse(100);
-
-            EventTankStatusChanged(this, new TankStatusChangedEventArgs(_max, TankId));
+            gpioTrigger.Pulse(1000);
         }
     }
 }

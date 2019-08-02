@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Home.Server.Daemons;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
+using Gpio;
 
 namespace Home.Server.Repositories
 {
@@ -19,11 +20,13 @@ namespace Home.Server.Repositories
 
     public class KitchenRepo : IKitchenRepo
     {
-        private ILogger _logger;
+        private static ILogger _logger;
         public KitchenRepo(ILogger<KitchenRepo> logger)
         {
             _logger = logger;
         }
+        //public Pin staticPin = new Pin(_logger);
+
         private Tank upperTank = new Tank() { Id = 1, Name = "Upper Tank", State = false, Depth = 0.0f, LevelPins = new int[4] { 26, 19, 13, 6 }, _GpioLevelTrigger = new GpioLevelTrigger(26, 19, 13, 6, 1) };
         private Tank lowerTank = new Tank() { Id = 2, Name = "Lower Tank", State = false, Depth = 0.0f, LevelPins = new int[4] { 5, 20, 16, 12 }, _GpioLevelTrigger = new GpioLevelTrigger(5, 20, 16, 12, 2) };
         private Vent chimneyVent = new Vent() { Id = 0, Name = "Chimney Vent", State = false, Speed = 0, CalibrationState = false };

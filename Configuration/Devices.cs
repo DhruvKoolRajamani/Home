@@ -157,6 +157,7 @@ namespace Devices
             }
             else if (message[0] == 'A')
             {
+                ProcessMessage(message, "A");
                 messageSent = false;
             }
             else
@@ -186,7 +187,7 @@ namespace Devices
 
         protected virtual void timerCallback(object state) { }
 
-        protected virtual void ProcessMessage(string message) { }
+        protected virtual bool ProcessMessage(string message, string Ack = "*") { return true; }
     }
 }
 

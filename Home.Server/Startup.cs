@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Home.Server.Daemons;
 using Devices;
+using Gpio;
 
 // LOGGING_HEADERS
 using Microsoft.Extensions.Logging;
@@ -70,6 +71,7 @@ namespace Home.Server
             services.AddLogging(builder =>
             {
                 builder.AddConsole().AddDebug();
+                DebugLoggerFactoryExtensions.AddDebug(builder).AddConsole();
             });
 #endif
 
