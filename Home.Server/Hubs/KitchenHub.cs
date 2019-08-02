@@ -30,10 +30,12 @@ namespace Home.Server.Hubs
         private Tank _LowerTank;
         private Vent _Vent;
         private DHT11 _DHT11;
+        protected ILogger _logger;
 
         //Hub Constructor to store data obtained from constructor call in the repositories
-        public KitchenHub(IKitchenRepo kitchenRepo, IHostedService kitchen) //, IVentMotorRepo ventMotorRepo)
+        public KitchenHub(IKitchenRepo kitchenRepo, IHostedService kitchen, ILogger<KitchenHub> logger) //, IVentMotorRepo ventMotorRepo)
         {
+            _logger = logger;
             _kitchenRepo = kitchenRepo;
             _kitchen = (Kitchen)kitchen;
             _UpperTank = kitchenRepo.UpperTank;
@@ -55,7 +57,7 @@ namespace Home.Server.Hubs
 
         public async Task Notification(string message)
         {
-            await Clients.Others.SendAsync("onNotification", message);
+            await Clients.Others.SendAsync("TankStatusChanged", message);
         }
 
         public async Task SetVentState(bool state, int speed, bool calState)
@@ -70,7 +72,7 @@ namespace Home.Server.Hubs
             _kitchenRepo.UpperTank.RaiseTankStatusChangedEvent(upperTankPumpState);
             _kitchen.SetTankStatus(_kitchenRepo.UpperTank.Id, upperTankPumpState);
 
-            Debug.WriteLine($"Upper Tank Pump State: {_UpperTank.State}");
+            _logger.LogInformation($"Upper Tank Pump State: {_UpperTank.State}");
 
             await Clients.All.SendAsync("UpperTankPumpStatus", _UpperTank.State);
         }
@@ -81,7 +83,7 @@ namespace Home.Server.Hubs
             _kitchenRepo.LowerTank.RaiseTankStatusChangedEvent(lowerTankPumpState);
             _kitchen.SetTankStatus(_kitchenRepo.LowerTank.Id, lowerTankPumpState);
 
-            Debug.WriteLine($"Lower Tank Pump State: {_LowerTank.State}");
+            _logger.LogInformation($"Lower Tank Pump State: {_LowerTank.State}");
 
             await Clients.All.SendAsync("LowerTankPumpStatus", _LowerTank.State);
         }
@@ -92,13 +94,13 @@ namespace Home.Server.Hubs
             {
                 _UpperTank.Depth = uppertank;
 
-                Debug.WriteLine($"Upper Tank Pump Depth: {_UpperTank.Depth}");
+                _logger.LogInformation($"Upper Tank Pump Depth: {_UpperTank.Depth}");
 
                 await Clients.All.SendAsync("Levels", _UpperTank.Depth, _LowerTank.Depth);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Exception in {this} at {LineNumber(ex)} with {ex.Message} of type {ex}");
+                _logger.LogInformation($"Exception in {this} at {LineNumber(ex)} with {ex.Message} of type {ex}");
             }
         }
 
@@ -108,13 +110,13 @@ namespace Home.Server.Hubs
             {
                 _LowerTank.Depth = lowertank;
 
-                Debug.WriteLine($"Lower Tank Pump Depth: {_LowerTank.Depth}");
+                _logger.LogInformation($"Lower Tank Pump Depth: {_LowerTank.Depth}");
 
                 await Clients.All.SendAsync("Levels", _UpperTank.Depth, _LowerTank.Depth);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Exception in {this} at {LineNumber(ex)} with {ex.Message} of type {ex}");
+                _logger.LogInformation($"Exception in {this} at {LineNumber(ex)} with {ex.Message} of type {ex}");
             }
         }
 

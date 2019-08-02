@@ -22,7 +22,8 @@ namespace Home.Server.Daemons
         private IHubContext<KitchenHub> _kitchenHub;
         public List<Vent> _VentList { get; set; }
         public List<Tank> _TankList { get; set; }
-        public Kitchen(List<Microcontroller> micro, IKitchenRepo repo, IHubContext<KitchenHub> hub) : base(micro)
+
+        public Kitchen(List<Microcontroller> micro, IKitchenRepo repo, IHubContext<KitchenHub> hub, ILogger<Daemon> logger) : base(micro, logger)
         {
             _TankList = new List<Tank>();
             _VentList = new List<Vent>();
@@ -41,11 +42,54 @@ namespace Home.Server.Daemons
             if (!_TankList.Contains(tank))
             {
                 _TankList.Add(tank);
+                try
+                {
+                    tank._GpioLevelTrigger.EventTankStatusChanged += TankStatusChanged;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogInformation(ex.Message);
+                }
             }
             else
             {
                 throw new DevicesProtocolException("Tank already contains instance");
             }
+        }
+
+        private bool[] tankFillStatus = new bool[2] { false, false };
+
+        private async void TankStatusChanged(object sender, TankStatusChangedEventArgs e)
+        {
+            var tank = _TankList.Where(t => t.Id == e.TankID).FirstOrDefault();
+            tank.Depth = e.Depth;
+
+            _logger.LogInformation($"Tank {e.TankID} is {tank.Depth} full");
+
+            if (e.Level == 3)
+            {
+                if (tank.State)
+                {
+                    _logger.LogInformation($"Turning Tank {e.TankID} is Off");
+                    tank.State = false;
+                    SetTankStatus(tank.Id, false);
+                    if (tank.Id == 1)
+                    {
+                        _kitchenRepo.UpperTank.State = false;
+                        tankFillStatus[0] = true;
+                        await _kitchenHub.Clients.All.SendAsync("UpperTankPumpStatus", tank.State);
+                    }
+                    else
+                    {
+                        _kitchenRepo.LowerTank.State = false;
+                        tankFillStatus[1] = true;
+                        await _kitchenHub.Clients.All.SendAsync("LowerTankPumpStatus", tank.State);
+                    }
+                    await _kitchenHub.Clients.All.SendAsync("OnNotification", $"{tank.Name} is full, please check if the motor is turned off");
+                }
+            }
+
+            await _kitchenHub.Clients.All.SendAsync("Levels", _TankList[0].Depth, _TankList[1].Depth);
         }
 
         public void SetVent(Vent vent)
@@ -86,20 +130,36 @@ namespace Home.Server.Daemons
                 string sId = "tk" + id.ToString().PadLeft(2, '0');
                 string msg = $"*^{sId}^{st}^*^000|"; // Ack.id.state.length
                 string chk = $"*^{sId}^{st}^*^{msg.Length - 1}|";
-                Debug.WriteLine(chk);
+                _logger.LogInformation(chk);
                 SendMessage("Kitchen", 0, chk);
             }
         }
 
         public static float f = 0.0f;
 
+        protected override void timerCallback(object state)
+        {
+            if (_TankList.Capacity > 1)
+                foreach (var tank in _TankList)
+                {
+                    try
+                    {
+                        tank._GpioLevelTrigger.Ping();
+                    }
+                    catch (Exception ex)
+                    {
+                        tank._GpioLevelTrigger.InitPins();
+                        _logger.LogInformation(ex.Message);
+                    }
+                }
+        }
         protected override void ProcessMessage(string message)
         {
             var msg = message.Split('^');
             float humidity = 0.0f;
             float temperature = 0.0f;
             // foreach (var m in msg)
-            //     Debug.WriteLine($"\n{m}\n");
+            //     _logger.LogInformation($"\n{m}\n");
             string ackState = msg[0];
             string sID = msg[1];
             bool state;
@@ -135,21 +195,21 @@ namespace Home.Server.Daemons
                     switch (iD)
                     {
                         case 1:
-                            f += (f <= 1.0f) ? 0.01f : 0.0f;
-                            tank1.Depth = f;
-                            Debug.WriteLine($"Upper Tank Depth: {tank1.Depth}");
+                            // f += (f <= 1.0f) ? 0.01f : 0.0f;
+                            // tank1.Depth = f;
+                            // _logger.LogInformation($"Upper Tank Depth: {tank1.Depth}");
                             break;
                         case 2:
-                            f += (f <= 1.0f) ? 0.01f : 0.0f;
-                            tank2.Depth = f;
-                            Debug.WriteLine($"Lower Tank Depth: {tank2.Depth}");
+                            // f += (f <= 1.0f) ? 0.01f : 0.0f;
+                            // tank2.Depth = f;
+                            // _logger.LogInformation($"Lower Tank Depth: {tank2.Depth}");
                             break;
                         default:
                             break;
                     }
                     break;
                 case "dh":
-                    // Debug.WriteLine("Entering DHT sensor case");
+                    // _logger.LogInformation("Entering DHT sensor case");
                     // parseStatus = bool.TryParse(msg[2], out state);
                     // if (parseStatus)
                     {
@@ -159,12 +219,12 @@ namespace Home.Server.Daemons
                         int H = humString.IndexOf(":");
                         parseStatus = float.TryParse(humString.Substring(H + 1, humString.Length - (H + 1)), out humidity);
                         // if (parseStatus)
-                        //     Debug.WriteLine($"Humidity: {humidity}");
+                        //     _logger.LogInformation($"Humidity: {humidity}");
                         string tempString = data.Substring(semC + 1, data.Length - semC - 1);
                         int T = humString.IndexOf(":");
                         parseStatus = float.TryParse(tempString.Substring(T + 1, tempString.Length - (T + 1)), out temperature);
                         // if (parseStatus)
-                        //     Debug.WriteLine($"Temperature: {temperature}");
+                        //     _logger.LogInformation($"Temperature: {temperature}");
                         _kitchenRepo.Dht11.Temp = temperature;
                         _kitchenRepo.Dht11.Humidity = humidity;
                         _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);

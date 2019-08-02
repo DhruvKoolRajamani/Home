@@ -25,7 +25,7 @@ namespace Home.Server
 {
     public static class ConnectionExtension
     {
-        public static string LocalIP = "http://192.168.1.13:5000/";
+        public static string LocalIP = "http://192.168.1.18:5000/";
     }
     public class Startup
     {

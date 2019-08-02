@@ -40,7 +40,10 @@ namespace Devices
     public abstract class Daemon : BackgroundService
     {
         private List<Microcontroller> microcontroller;
+        private Timer timer;
+        public Timer _Timer { get => timer; set => timer = value; }
         private List<UdpClient> udpClients = null;
+        protected ILogger _logger;
         public static bool messageSent = false;
         public List<Microcontroller> Microcontroller { get => microcontroller; set => microcontroller = value; }
         public List<UdpClient> MUdpClient
@@ -64,8 +67,9 @@ namespace Devices
             }
         }
 
-        public Daemon(List<Microcontroller> micro)
+        public Daemon(List<Microcontroller> micro, ILogger<Daemon> logger)
         {
+            _logger = logger;
             Microcontroller = micro;
             foreach (var mcu in Microcontroller)
             {
@@ -83,43 +87,46 @@ namespace Devices
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"\nError: {ex.Message}\n");
+                _logger.LogInformation($"\nError: {ex.Message}\n");
             }
+
+            _Timer = new Timer(timerCallback, null, 5000, 5000);
         }
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             try
             {
-                foreach (var client in MUdpClient)
-                {
-                    var mcu = Microcontroller.Where(m => m.MUdpClient == client).FirstOrDefault();
-                    if (client == null)
+                if (MUdpClient != null)
+                    foreach (var client in MUdpClient)
                     {
-                        if (mcu.UdpPort == 0)
-                            throw new DevicesProtocolException("Invalid Port Set");
-                        else
-                            mcu.MUdpClient = new UdpClient(mcu.UdpPort);
-                    }
-                    else
-                    {
-                        while (!cancellationToken.IsCancellationRequested)
+                        var mcu = Microcontroller.Where(m => m.MUdpClient == client).FirstOrDefault();
+                        if (client == null)
                         {
-                            try
+                            if (mcu.UdpPort == 0)
+                                throw new DevicesProtocolException("Invalid Port Set");
+                            else
+                                mcu.MUdpClient = new UdpClient(mcu.UdpPort);
+                        }
+                        else
+                        {
+                            while (!cancellationToken.IsCancellationRequested)
                             {
-                                client.BeginReceive(new AsyncCallback(OnUdpData), client);
-                            }
-                            catch (Exception ex)
-                            {
-                                Debug.WriteLine($"\nError: {ex.Message}\n");
+                                try
+                                {
+                                    client.BeginReceive(new AsyncCallback(OnUdpData), client);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogInformation($"\nError: {ex.Message}\n");
+                                }
                             }
                         }
                     }
-                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"Exception in {this.ToString()}, {ex.Source} at {LineNumber(ex)} with Exception: {ex.Message}");
+                _logger.LogInformation($"Exception in {this.ToString()}, {ex.Source} at {LineNumber(ex)} with Exception: {ex.Message}");
             }
 
             await Task.Delay(1000, cancellationToken);
@@ -145,7 +152,7 @@ namespace Devices
             else if (message[0] == '*')
             {
                 // Process Message as MCU to Server message
-                // Debug.WriteLine($"Do Something with : {message}");
+                // _logger.LogInformation($"Do Something with : {message}");
                 ProcessMessage(message);
             }
             else if (message[0] == 'A')
@@ -155,7 +162,7 @@ namespace Devices
             else
             {
                 string ex = "Invalid response from client";
-                Debug.WriteLine($"{ex}");
+                _logger.LogInformation($"{ex}");
                 throw new DevicesProtocolException(ex);
             }
 
@@ -172,10 +179,12 @@ namespace Devices
             IPEndPoint target = new IPEndPoint(IPAddress.Parse(mcu.IPAddress), mcu.UdpPort);
             Byte[] sendBytes = Encoding.ASCII.GetBytes(msg);
             mcu.MUdpClient.Send(sendBytes, sendBytes.Length, target);
-            Debug.WriteLine($"Sent \n{Encoding.ASCII.GetString(sendBytes)}");
-            Debug.WriteLine($"\nPacket Size: {sendBytes.Length}\n");
+            _logger.LogInformation($"Sent \n{Encoding.ASCII.GetString(sendBytes)}");
+            _logger.LogInformation($"\nPacket Size: {sendBytes.Length}\n");
             messageSent = true;
         }
+
+        protected virtual void timerCallback(object state) { }
 
         protected virtual void ProcessMessage(string message) { }
     }

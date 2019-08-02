@@ -14,6 +14,7 @@ namespace Devices
         public DevicesProtocolException(string message, System.Exception inner) : base(message, inner) { }
         protected DevicesProtocolException(System.Runtime.Serialization.SerializationInfo info,
         System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+        public event EventHandler<EventArgs> ProtocolExceptionThrown = delegate { };
     }
     public static class DevicesExtensions
     {

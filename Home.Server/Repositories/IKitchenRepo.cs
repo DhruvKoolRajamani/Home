@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Home.Server.Daemons;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
 
 namespace Home.Server.Repositories
 {
@@ -18,19 +19,13 @@ namespace Home.Server.Repositories
 
     public class KitchenRepo : IKitchenRepo
     {
-        public KitchenRepo()
+        private ILogger _logger;
+        public KitchenRepo(ILogger<KitchenRepo> logger)
         {
-            UpperTank.OnTankStatusChanged += TankStatusChanged;
-            LowerTank.OnTankStatusChanged += TankStatusChanged;
+            _logger = logger;
         }
-
-        private void TankStatusChanged(object sender, TankStatusChangedEventArgs e)
-        {
-            // _kitchen.SetTankStatus
-        }
-
-        private Tank upperTank = new Tank() { Id = 1, Name = "Upper Tank", State = false, Depth = 0.0f };
-        private Tank lowerTank = new Tank() { Id = 2, Name = "Lower Tank", State = false, Depth = 0.0f };
+        private Tank upperTank = new Tank() { Id = 1, Name = "Upper Tank", State = false, Depth = 0.0f, LevelPins = new int[4] { 26, 19, 13, 6 }, _GpioLevelTrigger = new GpioLevelTrigger(26, 19, 13, 6, 1) };
+        private Tank lowerTank = new Tank() { Id = 2, Name = "Lower Tank", State = false, Depth = 0.0f, LevelPins = new int[4] { 5, 20, 16, 12 }, _GpioLevelTrigger = new GpioLevelTrigger(5, 20, 16, 12, 2) };
         private Vent chimneyVent = new Vent() { Id = 0, Name = "Chimney Vent", State = false, Speed = 0, CalibrationState = false };
         private DHT11 dht11 = new DHT11() { Id = 0, Name = "DHT Sensor", State = false, Temp = 0.0f, Humidity = 0.0f };
 

@@ -8,20 +8,28 @@ namespace Home.Server.Daemons
 {
     public class TankStatusChangedEventArgs : EventArgs
     {
-        public float Depth { get; set; }
+        private float depth = 0.0f;
+        public int Level { get; set; }
+        public float Depth { get { return GetLevel(); } }
         public int TankID { get; set; }
         public bool State { get; set; }
 
-        public TankStatusChangedEventArgs(float depth, int id)
+        public TankStatusChangedEventArgs(int level, int id)
         {
             TankID = id;
-            Depth = depth;
+            Level = level;
         }
 
         public TankStatusChangedEventArgs(bool state, int id)
         {
             State = state;
             TankID = id;
+        }
+
+        private float GetLevel()
+        {
+            depth = (Level / 3.0f);
+            return depth;
         }
     }
 
@@ -42,11 +50,14 @@ namespace Home.Server.Daemons
         private int deviceId;
         private string deviceName;
 
+
         public bool State { get => deviceState; set => deviceState = value; }
         public bool CalibrationState { get => calibrationState; set => calibrationState = value; }
         public int Speed { get => speed; set => speed = value; }
         public int Id { get => deviceId; set => deviceId = value; }
         public string Name { get => deviceName; set => deviceName = value; }
+
+
     }
 
     public class Tank : IDevice
@@ -63,6 +74,8 @@ namespace Home.Server.Daemons
         private float depth;
         private int deviceId;
         private string deviceName;
+        private static bool tankFilled = false;
+        private GpioLevelTrigger gpioLevelTrigger;
 
         private List<int> deviceIds = new List<int>() { 1, 2 };
 
@@ -78,13 +91,17 @@ namespace Home.Server.Daemons
                 else deviceId = value;
             }
         }
+
+        public int[] LevelPins { get; set; }
         public string Name { get => deviceName; set => deviceName = value; }
+        public static bool TankFilled { get => tankFilled; set => tankFilled = value; }
         public List<int> DeviceIds { get => deviceIds; private set => deviceIds = value; }
+        public GpioLevelTrigger _GpioLevelTrigger { get => gpioLevelTrigger; set => gpioLevelTrigger = value; }
 
         public event EventHandler<TankStatusChangedEventArgs> OnTankStatusChanged = delegate { };
-        public void RaiseTankStatusChangedEvent(float depth)
+        public void RaiseTankStatusChangedEvent(int level)
         {
-            OnTankStatusChanged(this, new TankStatusChangedEventArgs(depth, Id));
+            OnTankStatusChanged(this, new TankStatusChangedEventArgs(level, Id));
         }
 
         public void RaiseTankStatusChangedEvent(bool state)
