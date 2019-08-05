@@ -13,19 +13,22 @@ using Home.Server.Repositories;
 using System.Diagnostics;
 using Microsoft.AspNetCore.SignalR;
 using Home.Server.Hubs;
+using System.Globalization;
 
 namespace Home.Server.Daemons
 {
     public class Kitchen : Daemon
     {
+        public new string currentName => nameof(Kitchen);
+        public override string CurrentName { get => currentName; }
         private readonly IKitchenRepo _kitchenRepo;
         private IHubContext<KitchenHub> _kitchenHub;
         public Tank UpperTank { get; set; }
         public Tank LowerTank { get; set; }
         public Vent ChimneyVent { get; set; }
-        private Timer _Timer { get; set; }
+        private Timer _TimerKitchen { get; set; }
 
-        public Kitchen(List<Microcontroller> micro, IKitchenRepo repo, IHubContext<KitchenHub> hub, ILogger<Daemon> logger) : base(micro, logger)
+        public Kitchen(List<Microcontroller> micro, IKitchenRepo repo, IHubContext<KitchenHub> hub, ILogger<Daemon> logger) : base(micro.FindAll(m => m.Room == "Kitchen"), logger)
         {
             _kitchenRepo = repo;
 
@@ -60,7 +63,7 @@ namespace Home.Server.Daemons
                 if (tank.State)
                 {
                     _logger.LogInformation($"Calling Timer in {tmDelay - curTime.Millisecond}");
-                    _Timer = new Timer(TankOffCallback, tank, 5000, Timeout.Infinite);
+                    _TimerKitchen = new Timer(TankOffCallback, tank, 5000, Timeout.Infinite);
                     await _kitchenHub.Clients.All.SendAsync("OnNotification", $"{tank.Name} is full, please check if the motor is turned off");
                 }
             }
@@ -94,7 +97,7 @@ namespace Home.Server.Daemons
                 vent.State = state;
                 vent.Speed = speed;
                 int st = (state) ? 1 : 0;
-                string sId = "vt" + id.ToString().PadLeft(2, '0');
+                string sId = "vt" + Convert.ToString(id, 16).PadLeft(2, '0');
                 string sData = speed.ToString();
                 string msg = $"*^{sId}^{st}^{sData}^000|"; // Ack.id.state.length
                 string chk = $"*^{sId}^{st}^{sData}^{msg.Length - 1}|";
@@ -109,7 +112,7 @@ namespace Home.Server.Daemons
             {
                 tank.State = state;
                 int st = (state) ? 1 : 0;
-                string sId = "tk" + id.ToString().PadLeft(2, '0');
+                string sId = "tk" + Convert.ToString(id, 16).PadLeft(2, '0');
                 string msg = $"*^{sId}^{st}^*^000|"; // Ack.id.state.length
                 string chk = $"*^{sId}^{st}^*^{msg.Length - 1}|";
                 _logger.LogInformation(chk);
@@ -147,7 +150,7 @@ namespace Home.Server.Daemons
                 bool state;
                 string sDType = msg[1].Substring(0, 2);
                 string sDId = msg[1].Substring(2, 2);
-                int iD = int.Parse(sDId);
+                int iD = int.Parse(sDId, NumberStyles.HexNumber);
                 bool parseStatus = false;
 
                 switch (sDType)

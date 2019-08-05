@@ -38,6 +38,7 @@ namespace Gpio
         private int _gpioPinId;
         private ManualResetEventSlim mre;
         private GpioController gpioController;
+        private bool eventRaised = false;
 
         public int GpioPinId { get => _gpioPinId; set => _gpioPinId = value; }
 
@@ -89,11 +90,17 @@ namespace Gpio
         {
             if (gpioController.GetPinMode(GpioPinId) == PinMode.Output)
             {
+                if (!eventRaised)
+                {
+                    EventGpio(this, new GpioEventArgs(false, $"{GpioPinId} reads Low"));
+                }
                 gpioController.Write(GpioPinId, PinValue.High);
 
                 delayMilli(delay);
 
                 gpioController.Write(GpioPinId, PinValue.Low);
+
+                eventRaised = false;
             }
         }
 
@@ -113,10 +120,7 @@ namespace Gpio
             if (value == PinValue.High)
             {
                 EventGpio(this, new GpioEventArgs(true, $"{GpioPinId} reads {value}"));
-            }
-            else
-            {
-                EventGpio(this, new GpioEventArgs(false, $"{GpioPinId} reads {value}"));
+                eventRaised = true;
             }
         }
 

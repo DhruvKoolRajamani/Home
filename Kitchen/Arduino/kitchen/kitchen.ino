@@ -5,10 +5,11 @@
 #include <DHTesp.h>
 #include <protocol.h>
 #include <VentController.h>
+#include <delayfuncs.h>
 
 #define DHT_PIN 14
 
-static const uint8_t LED_PIN = D6;
+static const uint8_t LED_PIN = D7;
 static const uint8_t RELAY_1_PIN = D1;
 static const uint8_t RELAY_2_PIN = D2;
 
@@ -35,14 +36,13 @@ IPAddress subnet_mask(255, 255, 255, 0);
 
 unsigned int localUdpPort = 4210;
 
-const char *piServer = "192.168.1.13"; // Port 5000
+const char *piServer = "192.168.1.18"; // Port 5000
 
-const char *sVt = "vt";
-const char *sTk = "tk";
 enum Device
 {
     VENT = 0,
-    TANK = 1
+    TANK = 1,
+    LEVELS = 2
 };
 
 int switchOnStr(const char *input)
@@ -57,6 +57,11 @@ int switchOnStr(const char *input)
     {
         Serial.println("Returning Tank");
         return 1;
+    }
+    else if (strcmp(input, "lv\0") == 0)
+    {
+        Serial.println("Returning Levels");
+        return 2;
     }
 
     Serial.println("Returning Error");
@@ -75,7 +80,7 @@ bool tankOn(int id, bool state)
         break;
     case 2:
         // Relay pin 2
-        // digitalWrite(RELAY_2_PIN, state);
+        digitalWrite(RELAY_2_PIN, state);
         break;
     default:
         break;
@@ -86,6 +91,7 @@ bool tankOn(int id, bool state)
 
 bool ventOn(bool state, int speed = 0)
 {
+#ifdef VENT_ENABLED
     if (speed == 0)
         Serial.printf("\nTurning vent %s\n", (state) ? "on" : "off");
     else
@@ -97,7 +103,9 @@ bool ventOn(bool state, int speed = 0)
         if (!isCalibrated)
         {
             sendCalState = true;
-            isCalibrated = calibrate(LED_PIN, RELAY_2_PIN, D3, minSpeed, maxSpeed, stopESC);
+            while (!calibrate(LED_PIN, RELAY_2_PIN, D3, minSpeed, maxSpeed, stopESC))
+                ;
+            isCalibrated = true;
             isRunning = false;
             Serial.println("Calibrated");
         }
@@ -134,8 +142,10 @@ bool ventOn(bool state, int speed = 0)
         isRunning = false;
         return true;
     }
-
     return false;
+#else
+    return true;
+#endif
 }
 
 void wifiSetup()
@@ -189,7 +199,7 @@ void processMessage()
             spd = 0;
         else if (spd > 100)
             spd = 70; // For safety
-        
+
         if (!state)
             status = ventOn(state);
         else
@@ -225,30 +235,56 @@ void processMessage()
 float prevTemp = 0.0f;
 float prevHum = 0.0f;
 
-void getDHTSample()
+unsigned long dhtCounter = 0;
+
+void getDHTSample(int yieldTime) // yieldTime in milliseconds
 {
-    delay(dht.getMinimumSamplingPeriod());
-    float humidity = dht.getHumidity();
-    float temperature = dht.getTemperature();
-    char tdata[10];
-    sprintf(tdata, "%.2f\0", temperature);
-    char hdata[10];
-    sprintf(hdata, "%.2f\0", humidity);
-    // delay(2000);
-    if (strcmp(tdata, "nan") == 0 || strcmp(hdata, "nan") == 0)
+    if ((dhtCounter - micros()) <= 1000)
     {
-        temperature = prevTemp;
-        humidity = prevHum;
+        delay(dht.getMinimumSamplingPeriod());
+        float humidity = dht.getHumidity();
+        float temperature = dht.getTemperature();
+        char tdata[10];
+        sprintf(tdata, "%.2f\0", temperature);
+        char hdata[10];
+        sprintf(hdata, "%.2f\0", humidity);
+        // delay(2000);
+        if (strcmp(tdata, "nan") == 0 || strcmp(hdata, "nan") == 0)
+        {
+            temperature = prevTemp;
+            humidity = prevHum;
+        }
+        else
+        {
+            // prevTemp = temperature;
+            // prevHum = humidity;
+            char data[30];
+            sprintf(data, "H:%.2f;T:%.2f\0", humidity, temperature);
+            sendMessage("dh", "00", "*", 1, data);
+            // Serial.printf("*^dh00^1^%s\n", data);
+        }
+        dhtCounter = 0;
     }
-    else
+
+    if (dhtCounter == 0)
+        dhtCounter = micros() + yieldTime * 1000;
+}
+unsigned long lvlCounter = 0;
+void pingLevels(int ms)
+{
+    if ((lvlCounter - micros()) <= 1000)
     {
-        // prevTemp = temperature;
-        // prevHum = humidity;
-        char data[30];
-        sprintf(data, "H:%.2f;T:%.2f\0", humidity, temperature);
-        sendMessage("dh", "00", "*", 1, data);
-        // Serial.printf("*^dh00^1^%s\n", data);
+        int valBot = digitalRead(D7);
+        Serial.printf("\nUpper tank Bot reads %d\n", valBot);
+        int valMid = digitalRead(D8);
+        Serial.printf("Upper tank Mid reads %d\n", valMid);
+        int valTop = digitalRead(D9);
+        Serial.printf("Upper tank Top reads %d\n", valTop);
+        lvlCounter = 0;
     }
+    
+    if (lvlCounter == 0)
+        lvlCounter = micros() + ms * 1000;
 }
 
 void setup()
@@ -269,14 +305,23 @@ void setup()
 
     setUdpServer(localUdpPort);
     dht.setup(DHT_PIN, DHTesp::DHT11);
-    getDHTSample();
+    getDHTSample(2000);
+
+    // pinMode(D3, INPUT_PULLUP);
+    // pinMode(D4, INPUT_PULLUP);
+    // pinMode(D5, INPUT_PULLUP);
+
+    // pinMode(D7, INPUT);
+    // pinMode(D8, INPUT);
+    // pinMode(D9, INPUT);
 }
 
 void loop()
 {
+    prevMicros = micros();
     char sRec[256];
     int packetSize = parsePacket();
-    getDHTSample();
+    getDHTSample(2000);
 
     if (packetSize > 0)
     {
@@ -286,9 +331,7 @@ void loop()
         processMessage();
     }
 
-    // If statement to check if vent has already throttled up, no need to throttle up/down once fan starts
-    // if (isRunning)
-    // {
-    //     myESC.writeMicroseconds(_ventSpeed);
-    // }
+    // pingLevels(5000);
+
+    loopTime = micros() - prevMicros;
 }

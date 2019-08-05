@@ -42,7 +42,7 @@ a.navbar-brand {
     align-items: center;
 }
 
-.pumpstatus {
+.devstatus {
     width: 200px;
     height: 40px;
     border: 2px solid black;
@@ -52,13 +52,13 @@ a.navbar-brand {
     margin: 10px;
 }
 
-    .pumpstatus .onstate {
+    .devstatus .onstate {
         position: absolute;
         background: green;
         width: 100%;
     }
 
-    .pumpstatus .offstate {
+    .devstatus .offstate {
         position: absolute;
         background: red;
         width: 100%;
@@ -111,7 +111,7 @@ html {
         align-items: center;
     }
 
-        .pump .pumpstatus {
+        .pump .devstatus {
             width: 120px;
             height: 30px;
             border: 2px solid black;

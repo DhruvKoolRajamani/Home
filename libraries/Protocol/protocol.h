@@ -71,7 +71,7 @@ bool searchForLength(int len, char *msg)
     return false;
 }
 
-// Protocol format: <A/N/*>.<targetId>.<state>.<command>.<msg len>|
+// Protocol format: <A/N/*>^<targetId>^<state>^<command>^<msg len>|
 //      <A/N/*>     A-> Ack; N -> Nack; * -> Indicates message from mcu to udp Daemon,
 //                  can be used to indicate error while changing motor speed/etc.
 //      <state>     Indicates the desired state

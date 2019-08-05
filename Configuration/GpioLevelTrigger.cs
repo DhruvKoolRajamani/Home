@@ -11,7 +11,7 @@ using Devices;
 
 using Microsoft.Extensions.Logging;
 
-namespace Home.Server.Daemons
+namespace Devices
 {
     public class GpioLevelTrigger
     {
@@ -111,10 +111,10 @@ namespace Home.Server.Daemons
                 }
                 else
                     Debug.WriteLine("Error");
-
                 _max = Math.Max(_max, n);
-                EventTankStatusChanged(this, new TankStatusChangedEventArgs(_max, TankId, GpioDebugString));
             }
+            else
+                _max = 0;
         }
 
         public void Ping()
@@ -124,6 +124,8 @@ namespace Home.Server.Daemons
             Debug.WriteLine($"Trigger");
 
             gpioTrigger.Pulse(1000);
+
+            EventTankStatusChanged(this, new TankStatusChangedEventArgs(_max, TankId, GpioDebugString));
         }
     }
 }

@@ -16,4 +16,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="3.0.0-preview6.19304.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Gpio\Gpio.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -66,7 +66,7 @@ $(document).ready(function () {
     var output = document.getElementById("ventValue");
 
     let connection = new signalR.HubConnectionBuilder()
-        .withUrl("/kitchen")
+        .withUrl("/kitchenHub")
         .configureLogging(signalR.LogLevel.Information)
         .build();
 

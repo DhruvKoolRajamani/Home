@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Logging.Debug;
 
+using Devices;
 using static Devices.DevicesExtensions;
 using Home.Server.Daemons;
 using Home.Server;
@@ -33,11 +34,11 @@ namespace Home.Server.Hubs
         protected ILogger _logger;
 
         //Hub Constructor to store data obtained from constructor call in the repositories
-        public KitchenHub(IKitchenRepo kitchenRepo, IHostedService kitchen, ILogger<KitchenHub> logger) //, IVentMotorRepo ventMotorRepo)
+        public KitchenHub(IKitchenRepo kitchenRepo, IEnumerable<Daemon> daemons, ILogger<KitchenHub> logger) //, IVentMotorRepo ventMotorRepo)
         {
             _logger = logger;
             _kitchenRepo = kitchenRepo;
-            _kitchen = (Kitchen)kitchen;
+            _kitchen = (Kitchen)daemons.FirstOrDefault(d => d.CurrentName == nameof(Kitchen));
             _UpperTank = kitchenRepo.UpperTank;
             _LowerTank = kitchenRepo.LowerTank;
             _Vent = kitchenRepo.ChimneyVent;
@@ -62,7 +63,14 @@ namespace Home.Server.Hubs
 
         public async Task SetVentState(bool state, int speed, bool calState)
         {
-            _kitchen.SetVentStatus(_kitchenRepo.ChimneyVent.Id, state, speed);
+            try
+            {
+                _kitchen.SetVentStatus(_kitchenRepo.ChimneyVent.Id, state, speed);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogInformation(ex.Message);
+            }
             await Clients.Caller.SendAsync("VentStatus", _kitchenRepo.ChimneyVent.State, _kitchenRepo.ChimneyVent.Speed, _kitchenRepo.ChimneyVent.CalibrationState);
         }
 

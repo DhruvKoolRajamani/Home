@@ -5,13 +5,14 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using System.Net;
-using Devices;
 using static Devices.DevicesExtensions;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
-
+using Gpio;
+using System.Text.Json.Serialization;
 
 // TODO: Convert all populate methods to config file that is loaded.
 
@@ -37,157 +38,152 @@ namespace Devices
         public UdpClient MUdpClient { get => microcontrollerUdpClient; set => microcontrollerUdpClient = value; }
     }
 
-    public abstract class Daemon : BackgroundService
+    public class TankStatusChangedEventArgs : EventArgs
     {
-        private List<Microcontroller> microcontroller;
-        private Timer timer;
-        public Timer _Timer { get => timer; set => timer = value; }
-        private List<UdpClient> udpClients = null;
-        protected ILogger _logger;
-        public static bool messageSent = false;
-        public List<Microcontroller> Microcontroller { get => microcontroller; set => microcontroller = value; }
-        public List<UdpClient> MUdpClient
+        private float depth = 0.0f;
+        public int Level { get; set; }
+        public string DebugMessage { get; set; }
+
+        public float Depth { get { return GetLevel(); } }
+        public int TankID { get; set; }
+        public bool State { get; set; }
+
+        public TankStatusChangedEventArgs(int level, int id)
         {
-            get
-            {
-                return udpClients;
-            }
+            TankID = id;
+            Level = level;
+        }
+
+        public TankStatusChangedEventArgs(bool state, int id)
+        {
+            State = state;
+            TankID = id;
+        }
+
+        public TankStatusChangedEventArgs(int level, int id, string debugMessage)
+        {
+            TankID = id;
+            Level = level;
+            DebugMessage = debugMessage;
+        }
+
+        private float GetLevel()
+        {
+            depth = (Level / 3.0f);
+            return depth;
+        }
+    }
+
+    public class Vent : IDevice
+    {
+        public Vent()
+        {
+            State = false;
+            Id = 0;
+            Name = "Chimney Vent";
+            CalibrationState = false;
+            Speed = 0;
+        }
+
+        private bool deviceState;
+        private bool calibrationState;
+        private int speed;
+        private int deviceId;
+        private string deviceName;
+
+
+        public bool State { get => deviceState; set => deviceState = value; }
+        public bool CalibrationState { get => calibrationState; set => calibrationState = value; }
+        public int Speed { get => speed; set => speed = value; }
+        public int Id { get => deviceId; set => deviceId = value; }
+        public string Name { get => deviceName; set => deviceName = value; }
+
+
+    }
+
+    public class Tank : IDevice
+    {
+        public Tank()
+        {
+            State = false;
+            Name = "Upper Tank";
+            Id = 1;
+            Depth = 0.0f;
+        }
+
+        private bool deviceState;
+        private float depth;
+        private int deviceId;
+        private string deviceName;
+        private static bool tankFilled = false;
+        private GpioLevelTrigger gpioLevelTrigger;
+
+        private List<int> deviceIds = new List<int>() { 1, 2 };
+
+        public bool State { get => deviceState; set => deviceState = value; }
+        public float Depth { get => depth; set => depth = value; }
+        public int Id
+        {
+            get => deviceId;
             set
             {
-                if (udpClients == null)
-                    udpClients = new List<UdpClient>();
-                foreach (var mcu in Microcontroller)
-                {
-                    if (!udpClients.Contains(mcu.MUdpClient))
-                    {
-                        udpClients.Add(mcu.MUdpClient);
-                    }
-                }
-                udpClients = value;
+                if (!DeviceIds.Contains(value))
+                    throw new DevicesProtocolException("Tank Ids out of bounds");
+                else deviceId = value;
             }
         }
 
-        public Daemon(List<Microcontroller> micro, ILogger<Daemon> logger)
+        public int[] LevelPins { get; set; }
+        public string Name { get => deviceName; set => deviceName = value; }
+        public static bool TankFilled { get => tankFilled; set => tankFilled = value; }
+        public List<int> DeviceIds { get => deviceIds; private set => deviceIds = value; }
+        public GpioLevelTrigger _GpioLevelTrigger { get => gpioLevelTrigger; set => gpioLevelTrigger = value; }
+
+        public event EventHandler<TankStatusChangedEventArgs> OnTankStatusChanged = delegate { };
+        public void RaiseTankStatusChangedEvent(int level)
         {
-            _logger = logger;
-            Microcontroller = micro;
-            foreach (var mcu in Microcontroller)
-            {
-                if (mcu.UdpPort == 0)
-                    throw new DevicesProtocolException("Invalid Port Set");
-                else
-                {
-                    Microcontroller.Where(m => (m == mcu)).FirstOrDefault().MUdpClient = new UdpClient(mcu.UdpPort);
-                }
-            }
-            try
-            {
-                foreach (var client in MUdpClient)
-                    client.BeginReceive(new AsyncCallback(OnUdpData), client);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInformation($"\nError: {ex.Message}\n");
-            }
-
-            _Timer = new Timer(timerCallback, null, 5000, 5000);
+            OnTankStatusChanged(this, new TankStatusChangedEventArgs(level, Id));
         }
 
-        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+        public void RaiseTankStatusChangedEvent(bool state)
         {
-            try
-            {
-                if (MUdpClient != null)
-                    foreach (var client in MUdpClient)
-                    {
-                        var mcu = Microcontroller.Where(m => m.MUdpClient == client).FirstOrDefault();
-                        if (client == null)
-                        {
-                            if (mcu.UdpPort == 0)
-                                throw new DevicesProtocolException("Invalid Port Set");
-                            else
-                                mcu.MUdpClient = new UdpClient(mcu.UdpPort);
-                        }
-                        else
-                        {
-                            while (!cancellationToken.IsCancellationRequested)
-                            {
-                                try
-                                {
-                                    client.BeginReceive(new AsyncCallback(OnUdpData), client);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogInformation($"\nError: {ex.Message}\n");
-                                }
-                            }
-                        }
-                    }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInformation($"Exception in {this.ToString()}, {ex.Source} at {LineNumber(ex)} with Exception: {ex.Message}");
-            }
-
-            await Task.Delay(1000, cancellationToken);
+            OnTankStatusChanged(this, new TankStatusChangedEventArgs(state, Id));
         }
+    }
 
-        public void OnUdpData(IAsyncResult result)
+    [Serializable()]
+    public class Switch : IDevice
+    {
+        private bool state;
+        private int id;
+        private string name;
+
+        [JsonPropertyName("state")]
+        public bool State { get => state; set => state = value; }
+        [JsonPropertyName("id")]
+        public int Id { get => id; set => id = value; }
+        [JsonPropertyName("name")]
+        public string Name { get => name; set => name = value; }
+    }
+
+    public class DHT11 : IDevice
+    {
+        private bool state;
+        private int id;
+        private string name;
+        private float temp;
+        private float humidity;
+        public bool State { get => state; set => state = value; }
+        public int Id { get => id; set => id = value; }
+        public string Name { get => name; set => name = value; }
+        public float Temp { get => temp; set => temp = value; }
+        public float Humidity { get => humidity; set => humidity = value; }
+
+        public event EventHandler<EventArgs> OnWeatherDataChanged = delegate { };
+        public void RaiseWeatherDataChangedEvent()
         {
-            // this is what had been passed into BeginReceive as the second parameter:
-            UdpClient client = result.AsyncState as UdpClient;
-            // points towards whoever had sent the message:
-            IPEndPoint source = new IPEndPoint(IPAddress.Any, 0);
-            var mcu = Microcontroller.Where(m => m.IPAddress == source.Address.ToString()).FirstOrDefault();
-            // get the actual message and fill out the source:
-            Byte[] receivedBytes = client.EndReceive(result, ref source);
-            // do what you'd like with `message` here:
-            string message = Encoding.ASCII.GetString(receivedBytes);
-            if (message[0] == 'N')
-            {
-                // NACK received
-                var msg = message.Replace("N^", "*^");
-                SendMessage(mcu.Room, mcu.Id, msg);
-            }
-            else if (message[0] == '*')
-            {
-                // Process Message as MCU to Server message
-                // _logger.LogInformation($"Do Something with : {message}");
-                ProcessMessage(message);
-            }
-            else if (message[0] == 'A')
-            {
-                ProcessMessage(message, "A");
-                messageSent = false;
-            }
-            else
-            {
-                string ex = "Invalid response from client";
-                _logger.LogInformation($"{ex}");
-                throw new DevicesProtocolException(ex);
-            }
-
-            // schedule the next receive operation once reading is done:
-            client.BeginReceive(new AsyncCallback(OnUdpData), client);
+            OnWeatherDataChanged(this, new EventArgs());
         }
-
-        public void SendMessage(string room, int id, string msg = "")
-        {
-            var mcu = Microcontroller.Where(m => (m.Room == room) && (m.Id == id)).FirstOrDefault();
-            // schedule the first receive operation:
-            mcu.MUdpClient.BeginReceive(new AsyncCallback(OnUdpData), mcu.MUdpClient);
-
-            IPEndPoint target = new IPEndPoint(IPAddress.Parse(mcu.IPAddress), mcu.UdpPort);
-            Byte[] sendBytes = Encoding.ASCII.GetBytes(msg);
-            mcu.MUdpClient.Send(sendBytes, sendBytes.Length, target);
-            _logger.LogInformation($"Sent \n{Encoding.ASCII.GetString(sendBytes)}");
-            _logger.LogInformation($"\nPacket Size: {sendBytes.Length}\n");
-            messageSent = true;
-        }
-
-        protected virtual void timerCallback(object state) { }
-
-        protected virtual bool ProcessMessage(string message, string Ack = "*") { return true; }
     }
 }
 

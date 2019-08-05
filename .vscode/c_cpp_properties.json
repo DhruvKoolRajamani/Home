@@ -19,6 +19,7 @@
             "includePath": [
                 "/home/kingmoney/Arduino/libraries/DHT_sensor_library_for_ESPx",
                 "/home/kingmoney/Arduino/libraries/DeviceMessage",
+                "/home/kingmoney/Arduino/libraries/DelayFuncs/**",
                 "/home/kingmoney/Arduino/libraries/Protocol/",
                 "/home/kingmoney/dotnet_ws/Home/libraries/Protocol/",
                 "/home/kingmoney/Arduino/libraries/Time",
