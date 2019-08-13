@@ -28,8 +28,8 @@ namespace Home.Server.Repositories
         }
         //public Pin staticPin = new Pin(_logger);
 
-        private Tank upperTank = new Tank() { Id = 0x01, Name = "Upper Tank", State = false, Depth = 0.0f, LevelPins = new int[4] { 11, 9, 10, 22 }, _GpioLevelTrigger = new GpioLevelTrigger(11, 9, 10, 22, 1) }; // 26, 19, 13, 6
-        private Tank lowerTank = new Tank() { Id = 0x02, Name = "Lower Tank", State = false, Depth = 0.0f, LevelPins = new int[4] { 5, 20, 16, 12 }, _GpioLevelTrigger = new GpioLevelTrigger(5, 20, 16, 12, 2) }; // 
+        private Tank upperTank = new Tank() { Id = 0x01, Name = "Upper Tank", State = false, Depth = 0.0f };
+        private Tank lowerTank = new Tank() { Id = 0x02, Name = "Lower Tank", State = false, Depth = 0.0f };
         private Vent chimneyVent = new Vent() { Id = 0x00, Name = "Chimney Vent", State = false, Speed = 0, CalibrationState = false };
         private DHT11 dht11 = new DHT11() { Id = 0x00, Name = "DHT Sensor", State = false, Temp = 0.0f, Humidity = 0.0f };
 

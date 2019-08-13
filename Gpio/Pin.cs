@@ -63,11 +63,11 @@ namespace Gpio
 
                 if (driveMode == PinMode.Input)
                 {
-                    gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
+                    gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.None, callback);
                 }
                 else if (driveMode == PinMode.InputPullUp)
                 {
-                    gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Rising, callback);
+                    gpioController.RegisterCallbackForPinValueChangedEvent(GpioPinId, PinEventTypes.Falling, callback);
                 }
                 else if (driveMode == PinMode.InputPullDown)
                 {
@@ -104,6 +104,25 @@ namespace Gpio
             }
         }
 
+        public int Probe()
+        {
+            if (gpioController.GetPinMode(GpioPinId) != PinMode.Output)
+            {
+                var val = gpioController.Read(GpioPinId);
+                if (val == PinValue.High)
+                {
+                    // EventGpio(this, new GpioEventArgs(true, $"{GpioPinId} reads {val}"));
+                    return 1;
+                }
+                return 0;
+            }
+            else
+            {
+                EventGpio(this, new GpioEventArgs(false, $"{GpioPinId} is output"));
+                return 0;
+            }
+        }
+
         // public void Read()
         // {
         //     if ((_gpioPin.GetPinMode() == PinMode.Input) || (_gpioPin.GetPinMode() == PinMode.InputPullUp))
@@ -116,11 +135,29 @@ namespace Gpio
         private void callback(object sender, PinValueChangedEventArgs args)
         {
             var value = gpioController.Read(args.PinNumber);
-
-            if (value == PinValue.High)
+            if (gpioController.GetPinMode(GpioPinId) == PinMode.InputPullUp)
             {
-                EventGpio(this, new GpioEventArgs(true, $"{GpioPinId} reads {value}"));
-                eventRaised = true;
+                if (value == PinValue.Low)
+                {
+                    EventGpio(this, new GpioEventArgs(true, $"{GpioPinId} reads {value}"));
+                    eventRaised = true;
+                }
+            }
+            else if (gpioController.GetPinMode(GpioPinId) == PinMode.InputPullDown)
+            {
+                if (value == PinValue.High)
+                {
+                    EventGpio(this, new GpioEventArgs(true, $"{GpioPinId} reads {value}"));
+                    eventRaised = true;
+                }
+            }
+            else
+            {
+                if (value == PinValue.High)
+                {
+                    EventGpio(this, new GpioEventArgs(true, $"{GpioPinId} reads {value}"));
+                    eventRaised = true;
+                }
             }
         }
 

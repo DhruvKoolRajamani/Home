@@ -27,6 +27,8 @@ namespace Home.Server.Daemons
         public Tank LowerTank { get; set; }
         public Vent ChimneyVent { get; set; }
         private Timer _TimerKitchen { get; set; }
+        private float PrevValue = -1.0f;
+        private int rejectedCounter = 0;
 
         public Kitchen(List<Microcontroller> micro, IKitchenRepo repo, IHubContext<KitchenHub> hub, ILogger<Daemon> logger) : base(micro.FindAll(m => m.Room == "Kitchen"), logger)
         {
@@ -35,9 +37,6 @@ namespace Home.Server.Daemons
             UpperTank = repo.UpperTank;
             LowerTank = repo.LowerTank;
 
-            UpperTank._GpioLevelTrigger.EventTankStatusChanged += TankStatusChanged;
-            LowerTank._GpioLevelTrigger.EventTankStatusChanged += TankStatusChanged;
-
             ChimneyVent = repo.ChimneyVent;
             _kitchenHub = hub;
         }
@@ -45,25 +44,41 @@ namespace Home.Server.Daemons
         private static DateTime curTime = DateTime.MinValue;
         private static int tmDelay = 0;
 
-        private async void TankStatusChanged(object sender, TankStatusChangedEventArgs e)
+        private async void TankStatusChanged(int tankId, float level)
         {
-            var tank = (e.TankID == 1) ? UpperTank : LowerTank;
-            tank.Depth = e.Depth;
+            var tank = (tankId == 1) ? UpperTank : LowerTank;
+            if (PrevValue == -1.0f)
+            {
+                PrevValue = level;
+                tank.Depth = level;
+            }
+            else
+                PrevValue = tank.Depth;
 
-            _logger.LogInformation($"\nTank {e.TankID} says {e.DebugMessage} at {DateTime.Now.ToString("hh:mm:ss:fff")}\n");
-            _logger.LogInformation($"Tank {e.TankID} is {tank.Depth} full");
+            if (((Math.Abs(PrevValue - level) / PrevValue) < 0.1) || rejectedCounter == 5)
+            {
+                tank.Depth = level;
+                rejectedCounter = 0;
+            }
+            else
+            {
+                rejectedCounter++;
+                tank.Depth = PrevValue;
+            }
 
-            if (e.Level == 3)
+            _logger.LogInformation($"\nTank {tankId} is {tank.Depth} filled at {DateTime.Now.ToString("hh:mm:ss:fff")}\n");
+
+            if (tank.Depth >= 0.95f)
             {
                 if (curTime == DateTime.MinValue)
                 {
                     curTime = DateTime.Now;
-                    tmDelay = curTime.Millisecond + 5000;
+                    tmDelay = curTime.Millisecond + 60000;
                 }
                 if (tank.State)
                 {
                     _logger.LogInformation($"Calling Timer in {tmDelay - curTime.Millisecond}");
-                    _TimerKitchen = new Timer(TankOffCallback, tank, 5000, Timeout.Infinite);
+                    _TimerKitchen = new Timer(TankOffCallback, tank, tmDelay, Timeout.Infinite);
                     await _kitchenHub.Clients.All.SendAsync("OnNotification", $"{tank.Name} is full, please check if the motor is turned off");
                 }
             }
@@ -116,28 +131,53 @@ namespace Home.Server.Daemons
                 string msg = $"*^{sId}^{st}^*^000|"; // Ack.id.state.length
                 string chk = $"*^{sId}^{st}^*^{msg.Length - 1}|";
                 _logger.LogInformation(chk);
-                SendMessage("Kitchen", 0, chk);
+                SendGroupMessage(chk, new Tuple<string, int>("Kitchen", 0), new Tuple<string, int>("Kitchen", 2));
+
+                await _kitchenHub.Clients.All.SendAsync("UpperTankPumpStatus", UpperTank.State);
+
+                await _kitchenHub.Clients.All.SendAsync("LowerTankPumpStatus", LowerTank.State);
             }
         }
 
-        public static float f = 0.0f;
+        // public static float f = 0.0f;
 
-        protected override void timerCallback(object state)
-        {
-            try
-            {
-                UpperTank._GpioLevelTrigger.Ping();
-                LowerTank._GpioLevelTrigger.Ping();
-            }
-            catch (Exception ex)
-            {
-                UpperTank._GpioLevelTrigger.InitPins();
-                LowerTank._GpioLevelTrigger.InitPins();
-                _logger.LogInformation(ex.Message);
-            }
-        }
+        // protected async override void timerCallback(object state)
+        // {
+        //     try
+        //     {
+        //         UpperTank.Depth = UpperTank._GpioLevelTrigger.Ping();
+        //         LowerTank.Depth = LowerTank._GpioLevelTrigger.Ping();
+
+        //         _logger.LogInformation($"\nTank {UpperTank.Name} is {UpperTank.Depth} filled at {DateTime.Now.ToString("hh:mm:ss:fff")}\n");
+        //         _logger.LogInformation($"\nTank {LowerTank.Name} is {LowerTank.Depth}\n");
+
+        //         // if (e.Depth == 1)
+        //         // {
+        //         //     if (curTime == DateTime.MinValue)
+        //         //     {
+        //         //         curTime = DateTime.Now;
+        //         //         tmDelay = curTime.Millisecond + 5000;
+        //         //     }
+        //         //     if (tank.State)
+        //         //     {
+        //         //         _logger.LogInformation($"Calling Timer in {tmDelay - curTime.Millisecond}");
+        //         //         _TimerKitchen = new Timer(TankOffCallback, tank, 5000, Timeout.Infinite);
+        //         //         await _kitchenHub.Clients.All.SendAsync("OnNotification", $"{tank.Name} is full, please check if the motor is turned off");
+        //         //     }
+        //         // }
+
+        //         await _kitchenHub.Clients.All.SendAsync("Levels", UpperTank.Depth, LowerTank.Depth);
+        //     }
+        //     catch (Exception ex)
+        //     {
+        //         UpperTank._GpioLevelTrigger.InitPins();
+        //         LowerTank._GpioLevelTrigger.InitPins();
+        //         _logger.LogInformation(ex.Message);
+        //     }
+        // }
         protected override bool ProcessMessage(string message, string AckState = "*")
         {
+            // _logger.LogInformation($"{message}\n");
             if (AckState != "A")
             {
                 var msg = message.Split('^');
@@ -152,15 +192,18 @@ namespace Home.Server.Daemons
                 string sDId = msg[1].Substring(2, 2);
                 int iD = int.Parse(sDId, NumberStyles.HexNumber);
                 bool parseStatus = false;
+                parseStatus = bool.TryParse(msg[2], out state);
+                string data = msg[3];
+                int col;
+                float level;
 
                 switch (sDType)
                 {
                     case "vt":
                         int speed;
-                        parseStatus = bool.TryParse(msg[2], out state);
                         if (parseStatus)
                         {
-                            parseStatus = int.TryParse(msg[3], out speed);
+                            parseStatus = int.TryParse(data, out speed);
                             if (!parseStatus)
                             {
                                 var catMsg = msg[3].Split('-');
@@ -175,49 +218,69 @@ namespace Home.Server.Daemons
                         }
                         break;
                     case "tk":
+                        _logger.LogInformation($"{message}\n");
+                        string cmd;
                         switch (iD)
                         {
                             case 1:
-                                // f += (f <= 1.0f) ? 0.01f : 0.0f;
-                                // tank1.Depth = f;
-                                // _logger.LogInformation($"Upper Tank Depth: {tank1.Depth}");
+                                col = data.IndexOf(":");
+                                cmd = data.Substring(0, col);
+                                _logger.LogInformation($"Command: {cmd}\n");
+                                switch (cmd)
+                                {
+                                    case "st":
+                                        var tmpStr = data.Substring(col + 1, data.Length - (col + 1));
+                                        if (tmpStr == "toggle")
+                                            SetTankStatus(1, !UpperTank.State);
+                                        break;
+                                    case "lv":
+                                        parseStatus = float.TryParse(data.Substring(col + 1, data.Length - (col + 1)), out level);
+                                        TankStatusChanged(1, level);
+                                        break;
+                                    default:
+                                        break;
+                                }
                                 break;
                             case 2:
-                                // f += (f <= 1.0f) ? 0.01f : 0.0f;
-                                // tank2.Depth = f;
-                                // _logger.LogInformation($"Lower Tank Depth: {tank2.Depth}");
+                                col = data.IndexOf(":");
+                                cmd = data.Substring(0, col);
+                                _logger.LogInformation($"Command: {cmd}\n");
+                                switch (cmd)
+                                {
+                                    case "st":
+                                        var tmpStr = data.Substring(col + 1, data.Length - (col + 1));
+                                        if (tmpStr == "toggle")
+                                            SetTankStatus(2, !LowerTank.State);
+                                        break;
+                                    case "lv":
+                                        parseStatus = float.TryParse(data.Substring(col + 1, data.Length - (col + 1)), out level);
+                                        TankStatusChanged(2, level);
+                                        break;
+                                    default:
+                                        break;
+                                }
                                 break;
                             default:
                                 break;
                         }
                         break;
                     case "dh":
-                        // _logger.LogInformation("Entering DHT sensor case");
-                        // parseStatus = bool.TryParse(msg[2], out state);
-                        // if (parseStatus)
-                        {
-                            string data = msg[3];
-                            int semC = data.IndexOf(';');
-                            string humString = data.Substring(0, semC);
-                            int H = humString.IndexOf(":");
-                            parseStatus = float.TryParse(humString.Substring(H + 1, humString.Length - (H + 1)), out humidity);
-                            // if (parseStatus)
-                            //     _logger.LogInformation($"Humidity: {humidity}");
-                            string tempString = data.Substring(semC + 1, data.Length - semC - 1);
-                            int T = humString.IndexOf(":");
-                            parseStatus = float.TryParse(tempString.Substring(T + 1, tempString.Length - (T + 1)), out temperature);
-                            // if (parseStatus)
-                            //     _logger.LogInformation($"Temperature: {temperature}");
-                            _kitchenRepo.Dht11.Temp = temperature;
-                            _kitchenRepo.Dht11.Humidity = humidity;
-                            _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
-                        }
+                        int semC = data.IndexOf(';');
+                        string humString = data.Substring(0, semC);
+                        int H = humString.IndexOf(":");
+                        parseStatus = float.TryParse(humString.Substring(H + 1, humString.Length - (H + 1)), out humidity);
+                        string tempString = data.Substring(semC + 1, data.Length - semC - 1);
+                        int T = humString.IndexOf(":");
+                        parseStatus = float.TryParse(tempString.Substring(T + 1, tempString.Length - (T + 1)), out temperature);
+                        _kitchenRepo.Dht11.Temp = temperature;
+                        _kitchenRepo.Dht11.Humidity = humidity;
+                        _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
                         break;
                     default:
                         break;
                 }
                 _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
-                _kitchenHub.Clients.All.SendAsync("Levels", UpperTank.Depth, LowerTank.Depth);
+                // _kitchenHub.Clients.All.SendAsync("Levels", UpperTank.Depth, LowerTank.Depth);
                 return true;
             }
             return true;

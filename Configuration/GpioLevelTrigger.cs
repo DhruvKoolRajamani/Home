@@ -113,19 +113,26 @@ namespace Devices
                     Debug.WriteLine("Error");
                 _max = Math.Max(_max, n);
             }
-            else
-                _max = 0;
+
+            EventTankStatusChanged(this, new TankStatusChangedEventArgs(_max, TankId, GpioDebugString));
         }
 
-        public void Ping()
+        public float Ping()
         {
             _max = 0;
 
             Debug.WriteLine($"Trigger");
 
-            gpioTrigger.Pulse(1000);
+            // gpioTrigger.Pulse(1000);
 
-            EventTankStatusChanged(this, new TankStatusChangedEventArgs(_max, TankId, GpioDebugString));
+            int i = 0;
+            for (i = 0; i < gpioLevels.Length; i++)
+            {
+                if (gpioLevels[i].Probe() == 0)
+                    break;
+            }
+            return (float)i/(float)gpioLevels.Length;
+            // EventTankStatusChanged(this, new TankStatusChangedEventArgs(i, TankId, GpioDebugString));
         }
     }
 }

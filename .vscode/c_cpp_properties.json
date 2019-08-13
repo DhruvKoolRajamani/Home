@@ -23,6 +23,8 @@
                 "/home/kingmoney/Arduino/libraries/Protocol/",
                 "/home/kingmoney/dotnet_ws/Home/libraries/Protocol/",
                 "/home/kingmoney/Arduino/libraries/Time",
+                "/home/kingmoney/Arduino/libraries/Ultrasonic",
+                "/home/kingmoney/Arduino/libraries/Ultrasonic/src/Ultrasonic.h",
                 "/home/kingmoney/Arduino/libraries/tinyxml2",
                 "/home/kingmoney/Downloads/Arduino/arduino-1.8.9/**",
                 "/home/kingmoney/Arduino/libraries/ArduinoJson/src",

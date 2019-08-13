@@ -71,6 +71,7 @@ namespace Home.Server.Daemons
                         {
                             try
                             {
+                                _logger.LogInformation($"{client.ToString()} + {client.Client.RemoteEndPoint}\n");
                                 client.BeginReceive(new AsyncCallback(OnUdpData), client);
                             }
                             catch (Exception ex)
@@ -99,6 +100,7 @@ namespace Home.Server.Daemons
             Byte[] receivedBytes = client.EndReceive(result, ref source);
             // do what you'd like with `message` here:
             string message = Encoding.ASCII.GetString(receivedBytes);
+            // _logger.LogInformation($"Do Something with : {message}");
             if (message[0] == 'N')
             {
                 // NACK received
@@ -108,7 +110,6 @@ namespace Home.Server.Daemons
             else if (message[0] == '*')
             {
                 // Process Message as MCU to Server message
-                // _logger.LogInformation($"Do Something with : {message}");
                 ProcessMessage(message);
             }
             else if (message[0] == 'A')
@@ -141,8 +142,29 @@ namespace Home.Server.Daemons
             messageSent = true;
         }
 
-        protected virtual void timerCallback(object state) { }
+        protected virtual async void timerCallback(object state) { }
 
         protected virtual bool ProcessMessage(string message, string Ack = "*") { return true; }
+
+        public void SendAllMessage(string msg)
+        {
+            foreach (var mcu in Microcontroller)
+            {
+                SendMessage(mcu.Room, mcu.Id, msg);
+            }
+        }
+
+        public void SendGroupMessage(string msg, Tuple<string, int> Mcu0, Tuple<string, int> Mcu1 = null, Tuple<string, int> Mcu2 = null)
+        {
+            SendMessage(Mcu0.Item1, Mcu0.Item2, msg);
+            if (Mcu1 != null)
+            {
+                SendMessage(Mcu1.Item1, Mcu1.Item2, msg);
+            }
+            if (Mcu2 != null)
+            {
+                SendMessage(Mcu2.Item1, Mcu2.Item2, msg);
+            }
+        }
     }
 }

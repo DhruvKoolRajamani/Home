@@ -47,6 +47,7 @@ namespace Home.Server.Hubs
 
         public async Task GetLightsStates()
         {
+            _lights.SetLightState(_lightsRepo.LivingRoom[0], _lightsRepo.LivingRoom[0].State); 
             await Clients.All.SendAsync("LightStates", _lightsRepo.LivingRoom, _lightsRepo.Kitchen);
         }
 
@@ -63,8 +64,8 @@ namespace Home.Server.Hubs
                 // _logger.LogInformation($"object: {sender.ToString()} of type {sender.GetType()}\n");
                 sender.State = swState;
                 _logger.LogInformation($"Received Switch with state {sender.State}\n");
-                _lights.SetLightState(sender, sender.State); 
-                await Clients.All.SendAsync("LightStates", _lightsRepo.LivingRoom, _lightsRepo.Kitchen);
+                _lights.SetLightState(sender, sender.State);
+                // await Clients.All.SendAsync("LightStates", _lightsRepo.LivingRoom, _lightsRepo.Kitchen);
                 // await Clients.All.SendAsync("LightStates", new List<object>() {sender, sender}, new List<object>() {sender});
             }
             catch (Exception ex)

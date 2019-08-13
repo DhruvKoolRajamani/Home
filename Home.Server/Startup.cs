@@ -37,11 +37,13 @@ namespace Home.Server
         }
 
         public IConfiguration Configuration { get; }
-        public static Microcontroller kitchenNodeAmica = new Microcontroller() { IPAddress = "192.168.1.25", Id = 0, Room = "Kitchen", UdpPort = 4210 };
+        public static Microcontroller kitchenNodeAmica = new Microcontroller() { IPAddress = "192.168.1.129", Id = 0, Room = "Kitchen", UdpPort = 4210 };
+        public static Microcontroller kitchenWemos = new Microcontroller() { IPAddress = "192.168.1.130", Id = 1, Room = "Kitchen", UdpPort = 4211 };
+        public static Microcontroller kitchenSwitches = new Microcontroller() { IPAddress = "192.168.1.131", Id = 2, Room = "Kitchen", UdpPort = 4212 };
         public static Microcontroller livingRoomLeftEsp = new Microcontroller() { IPAddress = "192.168.1.101", Id = 0, Room = "Living Room", UdpPort = 6881 };
         public static Microcontroller livingRoomRightEsp = new Microcontroller() { IPAddress = "192.168.1.102", Id = 1, Room = "Living Room", UdpPort = 6882 };
         // public static Microcontroller kitchenNodeMcu = new Microcontroller() { IPAddress = "192.168.1.26", Id = 1, Room = "Kitchen", UdpPort = 4211 };
-        public static List<Microcontroller> mcus = new List<Microcontroller>() { kitchenNodeAmica, livingRoomLeftEsp, livingRoomRightEsp };
+        public static List<Microcontroller> mcus = new List<Microcontroller>() { kitchenNodeAmica, kitchenWemos, kitchenSwitches, livingRoomLeftEsp, livingRoomRightEsp };
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -52,7 +54,6 @@ namespace Home.Server
                 options.CheckConsentNeeded = context => true;
             });
 
-            // services.AddSingleton<IHostedService, Kitchen>();
             services.AddSingleton<ILightsRepo, LightsRepo>();
             services.AddSingleton<IKitchenRepo, KitchenRepo>();
             services.AddSingleton<List<Microcontroller>>(mcus);
@@ -80,8 +81,6 @@ namespace Home.Server
 #endif
 
             services.AddRazorPages();
-
-            // var kitchen = services.BuildServiceProvider().GetService<Kitchen>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -116,7 +116,6 @@ namespace Devices
         private int deviceId;
         private string deviceName;
         private static bool tankFilled = false;
-        private GpioLevelTrigger gpioLevelTrigger;
 
         private List<int> deviceIds = new List<int>() { 1, 2 };
 
@@ -137,8 +136,6 @@ namespace Devices
         public string Name { get => deviceName; set => deviceName = value; }
         public static bool TankFilled { get => tankFilled; set => tankFilled = value; }
         public List<int> DeviceIds { get => deviceIds; private set => deviceIds = value; }
-        public GpioLevelTrigger _GpioLevelTrigger { get => gpioLevelTrigger; set => gpioLevelTrigger = value; }
-
         public event EventHandler<TankStatusChangedEventArgs> OnTankStatusChanged = delegate { };
         public void RaiseTankStatusChangedEvent(int level)
         {
