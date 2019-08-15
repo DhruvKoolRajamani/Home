@@ -88,16 +88,17 @@ namespace Home.Server.Daemons
 
             await Task.Delay(1000, cancellationToken);
         }
-
+        protected IPEndPoint msgSource;
         public void OnUdpData(IAsyncResult result)
         {
             // this is what had been passed into BeginReceive as the second parameter:
             UdpClient client = result.AsyncState as UdpClient;
             // points towards whoever had sent the message:
             IPEndPoint source = new IPEndPoint(IPAddress.Any, 0);
-            var mcu = Microcontroller.Where(m => m.IPAddress == source.Address.ToString()).FirstOrDefault();
             // get the actual message and fill out the source:
             Byte[] receivedBytes = client.EndReceive(result, ref source);
+            var mcu = Microcontroller.Where(m => m.IPAddress == source.Address.ToString()).FirstOrDefault();
+            msgSource = source;
             // do what you'd like with `message` here:
             string message = Encoding.ASCII.GetString(receivedBytes);
             // _logger.LogInformation($"Do Something with : {message}");

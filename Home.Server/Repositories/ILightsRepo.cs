@@ -15,6 +15,7 @@ namespace Home.Server.Repositories
     {
         List<Switch> LivingRoom { get; set; }
         List<Switch> Kitchen { get; set; }
+        List<Relay> LivingRoomRelays { get; set; }
 
         Switch IdentifySwitchById(int id);
     }
@@ -24,6 +25,7 @@ namespace Home.Server.Repositories
         private static ILogger _logger;
         private List<Switch> livingRoom = new List<Switch>() { new Switch() { Name = "Living Room", Id = 0x00, State = false }, new Switch() { Name = "Living Room", Id = 0x01, State = false } };
         private List<Switch> kitchen = new List<Switch>() { new Switch() { Name = "Kitchen", Id = 0x02, State = false }, new Switch() { Name = "Kitchen", Id = 0x03, State = false } };
+        private List<Relay> livingRoomRelays = new List<Relay>() { new Relay() { Name = "Living Room", Id = 0x00, State = false }, new Relay() { Name = "Living Room", Id = 0x01, State = false } };
 
         public LightsRepo(ILogger<LightsRepo> logger)
         {
@@ -32,6 +34,7 @@ namespace Home.Server.Repositories
 
         public List<Switch> LivingRoom { get => livingRoom; set => livingRoom = value; }
         public List<Switch> Kitchen { get => kitchen; set => kitchen = value; }
+        public List<Relay> LivingRoomRelays { get => livingRoomRelays; set => livingRoomRelays = value; }
 
         public Switch IdentifySwitchById(int id)
         {

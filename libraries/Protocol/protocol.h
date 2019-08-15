@@ -228,7 +228,7 @@ char *toStr(int input)
     return output;
 }
 
-char msgPack[5][256];
+char msgPack[5][256] = {""};
 // Since protocol has only 4 '.' separators, splitting the string can be hardcoded
 bool searchForLength(int len, char *msg)
 {
@@ -292,7 +292,7 @@ void udpSend(const char *sendMsg)
 void sendMessage(const char *dType = "*", const char *targetId = "*", const char *ack = "*", int state = -1, const char *data = "*")
 {
     // send back a reply, to the IP address and port we got the packet from
-    char replyPacket[255];
+    char replyPacket[255] = "";
     char *pReply = replyPacket;
     char st[1];
     if (state == -1)
@@ -362,6 +362,15 @@ char *splitString(int i)
 
     char *tmp = msgPack[i];
     return tmp;
+}
+
+void setMsgPackNull(const char* inputStr = "")
+{
+    for (int i = 0; i < 5; i++)
+    {
+        char* tmp = msgPack[i];
+        sprintf(tmp, inputStr);
+    }
 }
 
 #endif // PROTOCOL_H

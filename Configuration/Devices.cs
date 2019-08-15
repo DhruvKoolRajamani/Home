@@ -163,6 +163,21 @@ namespace Devices
         public string Name { get => name; set => name = value; }
     }
 
+    [Serializable()]
+    public class Relay : IDevice
+    {
+        private bool state;
+        private int id;
+        private string name;
+
+        [JsonPropertyName("state")]
+        public bool State { get => state; set => state = value; }
+        [JsonPropertyName("id")]
+        public int Id { get => id; set => id = value; }
+        [JsonPropertyName("name")]
+        public string Name { get => name; set => name = value; }
+    }
+
     public class DHT11 : IDevice
     {
         private bool state;

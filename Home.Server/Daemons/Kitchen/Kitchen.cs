@@ -77,7 +77,7 @@ namespace Home.Server.Daemons
                 }
                 if (tank.State)
                 {
-                    _logger.LogInformation($"Calling Timer in {tmDelay - curTime.Millisecond}");
+                    _logger.LogInformation($"Calling Timer in {tmDelay - DateTime.Now.Millisecond}");
                     _TimerKitchen = new Timer(TankOffCallback, tank, tmDelay, Timeout.Infinite);
                     await _kitchenHub.Clients.All.SendAsync("OnNotification", $"{tank.Name} is full, please check if the motor is turned off");
                 }
@@ -186,103 +186,111 @@ namespace Home.Server.Daemons
                 // foreach (var m in msg)
                 //     _logger.LogInformation($"\n{m}\n");
                 string ackState = msg[0];
-                string sID = msg[1];
-                bool state;
-                string sDType = msg[1].Substring(0, 2);
-                string sDId = msg[1].Substring(2, 2);
-                int iD = int.Parse(sDId, NumberStyles.HexNumber);
-                bool parseStatus = false;
-                parseStatus = bool.TryParse(msg[2], out state);
-                string data = msg[3];
-                int col;
-                float level;
-
-                switch (sDType)
+                try
                 {
-                    case "vt":
-                        int speed;
-                        if (parseStatus)
-                        {
-                            parseStatus = int.TryParse(data, out speed);
-                            if (!parseStatus)
+                    string sID = msg[1];
+                    bool state;
+                    string sDType = msg[1].Substring(0, 2);
+                    string sDId = msg[1].Substring(2, 2);
+                    int iD = int.Parse(sDId, NumberStyles.HexNumber);
+                    bool parseStatus = false;
+                    parseStatus = bool.TryParse(msg[2], out state);
+                    string data = msg[3];
+                    int col;
+                    float level;
+
+                    switch (sDType)
+                    {
+                        case "vt":
+                            int speed;
+                            if (parseStatus)
                             {
-                                var catMsg = msg[3].Split('-');
-                                parseStatus = int.TryParse(catMsg[0], out speed);
-                                if (parseStatus)
+                                parseStatus = int.TryParse(data, out speed);
+                                if (!parseStatus)
                                 {
-                                    bool calStatus;
-                                    parseStatus = bool.TryParse(catMsg[1], out calStatus);
-                                    ChimneyVent.CalibrationState = calStatus;
+                                    var catMsg = msg[3].Split('-');
+                                    parseStatus = int.TryParse(catMsg[0], out speed);
+                                    if (parseStatus)
+                                    {
+                                        bool calStatus;
+                                        parseStatus = bool.TryParse(catMsg[1], out calStatus);
+                                        ChimneyVent.CalibrationState = calStatus;
+                                    }
                                 }
                             }
-                        }
-                        break;
-                    case "tk":
-                        _logger.LogInformation($"{message}\n");
-                        string cmd;
-                        switch (iD)
-                        {
-                            case 1:
-                                col = data.IndexOf(":");
-                                cmd = data.Substring(0, col);
-                                _logger.LogInformation($"Command: {cmd}\n");
-                                switch (cmd)
-                                {
-                                    case "st":
-                                        var tmpStr = data.Substring(col + 1, data.Length - (col + 1));
-                                        if (tmpStr == "toggle")
-                                            SetTankStatus(1, !UpperTank.State);
-                                        break;
-                                    case "lv":
-                                        parseStatus = float.TryParse(data.Substring(col + 1, data.Length - (col + 1)), out level);
-                                        TankStatusChanged(1, level);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                break;
-                            case 2:
-                                col = data.IndexOf(":");
-                                cmd = data.Substring(0, col);
-                                _logger.LogInformation($"Command: {cmd}\n");
-                                switch (cmd)
-                                {
-                                    case "st":
-                                        var tmpStr = data.Substring(col + 1, data.Length - (col + 1));
-                                        if (tmpStr == "toggle")
-                                            SetTankStatus(2, !LowerTank.State);
-                                        break;
-                                    case "lv":
-                                        parseStatus = float.TryParse(data.Substring(col + 1, data.Length - (col + 1)), out level);
-                                        TankStatusChanged(2, level);
-                                        break;
-                                    default:
-                                        break;
-                                }
-                                break;
-                            default:
-                                break;
-                        }
-                        break;
-                    case "dh":
-                        int semC = data.IndexOf(';');
-                        string humString = data.Substring(0, semC);
-                        int H = humString.IndexOf(":");
-                        parseStatus = float.TryParse(humString.Substring(H + 1, humString.Length - (H + 1)), out humidity);
-                        string tempString = data.Substring(semC + 1, data.Length - semC - 1);
-                        int T = humString.IndexOf(":");
-                        parseStatus = float.TryParse(tempString.Substring(T + 1, tempString.Length - (T + 1)), out temperature);
-                        _kitchenRepo.Dht11.Temp = temperature;
-                        _kitchenRepo.Dht11.Humidity = humidity;
-                        _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
-                        break;
-                    default:
-                        break;
+                            break;
+                        case "tk":
+                            _logger.LogInformation($"{message}\n");
+                            string cmd;
+                            switch (iD)
+                            {
+                                case 1:
+                                    col = data.IndexOf(":");
+                                    cmd = data.Substring(0, col);
+                                    _logger.LogInformation($"Command: {cmd}\n");
+                                    switch (cmd)
+                                    {
+                                        case "st":
+                                            var tmpStr = data.Substring(col + 1, data.Length - (col + 1));
+                                            if (tmpStr == "toggle")
+                                                SetTankStatus(1, !UpperTank.State);
+                                            break;
+                                        case "lv":
+                                            parseStatus = float.TryParse(data.Substring(col + 1, data.Length - (col + 1)), out level);
+                                            TankStatusChanged(1, level);
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                    break;
+                                case 2:
+                                    col = data.IndexOf(":");
+                                    cmd = data.Substring(0, col);
+                                    _logger.LogInformation($"Command: {cmd}\n");
+                                    switch (cmd)
+                                    {
+                                        case "st":
+                                            var tmpStr = data.Substring(col + 1, data.Length - (col + 1));
+                                            if (tmpStr == "toggle")
+                                                SetTankStatus(2, !LowerTank.State);
+                                            break;
+                                        case "lv":
+                                            parseStatus = float.TryParse(data.Substring(col + 1, data.Length - (col + 1)), out level);
+                                            TankStatusChanged(2, level);
+                                            break;
+                                        default:
+                                            break;
+                                    }
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case "dh":
+                            int semC = data.IndexOf(';');
+                            string humString = data.Substring(0, semC);
+                            int H = humString.IndexOf(":");
+                            parseStatus = float.TryParse(humString.Substring(H + 1, humString.Length - (H + 1)), out humidity);
+                            string tempString = data.Substring(semC + 1, data.Length - semC - 1);
+                            int T = humString.IndexOf(":");
+                            parseStatus = float.TryParse(tempString.Substring(T + 1, tempString.Length - (T + 1)), out temperature);
+                            _kitchenRepo.Dht11.Temp = temperature;
+                            _kitchenRepo.Dht11.Humidity = humidity;
+                            _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
+                            break;
+                        default:
+                            break;
+                    }
+                    _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
+                    // _kitchenHub.Clients.All.SendAsync("Levels", UpperTank.Depth, LowerTank.Depth);
                 }
-                _kitchenHub.Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
-                // _kitchenHub.Clients.All.SendAsync("Levels", UpperTank.Depth, LowerTank.Depth);
-                return true;
+                catch (IndexOutOfRangeException ex)
+                {
+                    _logger.LogInformation($"{ex.Message}, {ex.Source}\n");
+                    _logger.LogInformation($"Called by {msgSource.Address} on port {msgSource.Port}\n");
+                }
             }
+
             return true;
         }
     }

@@ -80,7 +80,7 @@ void probeLevels()
     int i = digitalRead(UPPER_TANK_FLOAT);
     upper = (i) ? 0.0f : 1.0f;
     sprintf(pData, "lv:%.2f", upper);
-    Serial.printf("Depth: %0.2f\n", upper);
+    // Serial.printf("Depth: %0.2f\n", upper);
     sendMessage("tk", "01", "*", 1, pData);
   }
 }
@@ -94,16 +94,14 @@ bool tankOn(int id, bool state)
   case 1:
     // Relay pin 1
     digitalWrite(RELAY_1_PIN, state);
-    break;
+    return true;
   case 2:
     // Relay pin 2
     digitalWrite(RELAY_2_PIN, state);
-    break;
+    return true;
   default:
-    break;
-  };
-
-  return true;
+    return false;
+  };  
 }
 
 bool ventOn(bool state, int speed = 0)
@@ -165,8 +163,8 @@ bool ventOn(bool state, int speed = 0)
 #endif
 }
 
-char strPack[5][256];
-char incomingPacket[256];
+char strPack[5][256] = {""};
+char incomingPacket[256] = "";
 
 void processMessage()
 {
@@ -287,20 +285,34 @@ void setup()
 }
 
 int cnt = 0;
-int del = 1000;
+int del = 30000;
 int probDelay = 20;
 int numValToSend = 3;
 bool sendValues = true;
+
+void nullAllStrings()
+{
+  char* pIncomingPacket = incomingPacket;
+  setMsgPackNull();
+  pIncomingPacket = "";
+  for (int i = 0; i < 5; i++)
+  {
+    char* pStrPack = strPack[i];
+    pStrPack = "";
+  }
+}
 
 void loop()
 {
   ArduinoOTA.handle();
   getDHTSample(2000);
+  nullAllStrings();
 
   onReceive(incomingPacket);
   for (int i = 0; i < 5; i++)
     memcpy(strPack[i], splitString(i), strlen(splitString(i)));
   processMessage();
+  nullAllStrings();
 
   if (((millis() % del) < 5))
   {

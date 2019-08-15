@@ -6,8 +6,8 @@ IPAddress static_ip(192, 168, 1, 130);
 IPAddress subnet_mask(255, 255, 255, 0);
 IPAddress RemoteIp(192, 168, 1, 18);
 
-char incomingPacket[256];
-char replyPacket[256];
+char incomingPacket[256] = "";
+char replyPacket[256] = "";
 
 const float MAX_HEIGHT = 120.0f;
 
