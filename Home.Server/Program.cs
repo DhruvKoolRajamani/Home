@@ -32,20 +32,8 @@ namespace Home.Server
 
             host.Run();
 
-            // CreateHostBuilder(args).Build().Run();
         }
 
-        // public static IHostBuilder CreateHostBuilder(string[] args) =>
-        //     Host.CreateDefaultBuilder(args)
-        //         .ConfigureWebHostDefaults(webBuilder =>
-        //         {
-        //             webBuilder.UseStartup<Startup>();
-        //             webBuilder.UseUrls("http://localhost:5000/");
-        //             webBuilder.Build().Run();
-        //         });
-        // .UseDefaultServiceProvider((context, options) =>
-        // {
-        //     options.ValidateScopes = true;
-        // });
+      
     }
 }

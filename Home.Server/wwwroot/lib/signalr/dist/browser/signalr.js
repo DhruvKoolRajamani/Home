@@ -1966,6 +1966,7 @@ var HubConnection = /** @class */ (function () {
         this.startPromise = this.startWithStateTransitions();
         return this.startPromise;
     };
+
     HubConnection.prototype.startWithStateTransitions = function () {
         return __awaiter(this, void 0, void 0, function () {
             var e_1;

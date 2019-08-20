@@ -7,14 +7,18 @@
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 #include <WiFiUdp.h>
-
+#include <RemoteDebug.h>
+#include <RemoteDebugCfg.h>
+#include <RemoteDebugWS.h>
+#include <telnet.h>
 #ifdef ENABLE_SOFTAP
 #include <lwip/lwip_napt.h>
 #include <lwip/app/dhcpserver.h>
 #endif
 
 WiFiUDP udpServer;
-bool enableSerialOutput = false;
+extern RemoteDebug Debug;
+bool enableSerialOutput = true;
 
 /**
  * Output WiFi setup
@@ -110,7 +114,10 @@ void wifiSetup(IPAddress staticIp, IPAddress gw, IPAddress sm, WiFiMode wifiMode
 
     if (enableSerialOutput)
     {
-        Serial.print("Connecting...");
+		Serial.print("Connecting...");
+		Serial.println(networkName);
+        Debug.println(networkName);
+
     }
 
     while (WiFi.status() != WL_CONNECTED)
@@ -219,61 +226,56 @@ int toInt(const char *input)
     return (int)strtol(input, NULL, 16);
 }
 
-char *toStr(int input)
+char *toStr( int input)
 {
-    char output[3] = "00";
-    sprintf(output, "%X", input);
-    if ((int)strtol(output, NULL, 16) < 10)
-        sprintf(output, "0%s", output);
+    char output[3] = "";
+     sprintf(output, "%d", input);
     return output;
 }
 
-char msgPack[5][256] = {""};
-// Since protocol has only 4 '.' separators, splitting the string can be hardcoded
-bool searchForLength(int len, char *msg)
+char msgPack[6][128] = {""};
+
+
+
+//Message format : <Orig>^<TargetType>^<ID>^<Command>^<Data>^<Totalbytes not including the totalbytes>
+//      <Orig>      dev / srv msg originator.
+//      <TargetType>target type -> dev / srv
+//      <ID>        Specfic ID of a target
+//      <Command>   Action that needs to be performed could be "switch" / "info" / "query" /"register" etc
+//      <Data>      Any data associated with the command : "switch" could have "0" / "1" etc.
+//                  Use '-' to separate data commands. eg. *.*.*.50-calibrated.*
+//      <len>       Length of message in bytes to provide idea about message loss - This might change to a single byte 
+//                  since we want to contain the message size to 256 bytes
+
+bool ParseMsg(int len, char *msg)
 {
-    char delim[] = "^";
+    
+    Serial.println(msg);
+    Debug.println(msg);
+    //TODO: havent implement message size check
+    bool bPass = false ;
     int i = 0;
+    char * pMsg = strtok(msg, "^");
 
-    char *pMsg = msg;
-    char *pMsgPack;
-
-    // Split string based on '^' serparators
-    pMsg = strtok(msg, delim);
-    pMsgPack = msgPack[i];
-    i++;
+    strcpy( msgPack[i], pMsg);
+		i++;
+    Serial.println(msgPack[i]);
     while (pMsg != NULL)
     {
-        if (i > 4)
+        pMsg = strtok(NULL, "^");
+        if(pMsg == NULL)
             break;
-        pMsg = strtok(NULL, delim);
-        pMsgPack = msgPack[i];
-        strcpy(pMsgPack, pMsg);
+	    strcpy(msgPack[i], pMsg);
+
         i++;
     }
-
-    // Check if the last character is end of message else throw exception and send NACK to daemon
-    char endChar = msgPack[4][strlen(msgPack[4]) - 1];
-    if (endChar != '|')
-        return false;
-
-    pMsg = strtok(msgPack[4], "|");
-    // Compare message length with length received in message
-    int recLength = atoi(pMsg);
-
-    if (recLength == len)
-    {
-        pMsgPack = msgPack[4];
-        strcpy(pMsgPack, pMsg);
-        return true;
-    }
-
-    return false;
+    bPass = true;
+    return bPass;
 }
 
 void udpSend(const char *sendMsg)
 {
-    for (int i = 0; i < servers.Count; i++)
+   for (int i = 0; i < servers.Count; i++)
     {
         udpServer.beginPacket(servers.addresses[i].ServerIp, servers.addresses[i].Port);
         udpServer.write(sendMsg);
@@ -281,83 +283,66 @@ void udpSend(const char *sendMsg)
     }
 }
 
-// Protocol format: <A/N/*>^<targetId>^<state>^<command>^<msg len>|
-//      <A/N/*>     A-> Ack; N -> Nack; * -> Indicates message from mcu to udp Daemon,
-//                  can be used to indicate error while changing motor speed/etc.
-//      <state>     Indicates the desired state
-//      <command>   Can be either a speed command, or a calibration command
+//Message format : <Orig>^<TargetType>^<ID>^<Command>^<Data>^<Totalbytes not including the totalbytes>
+//      <Orig>      dev / srv msg originator.
+//      <TargetType>target type -> dev / srv
+//      <ID>        Specfic ID of a target
+//      <Command>   Action that needs to be performed could be "switch" / "info" / "query" /"register" etc
+//      <Data>      Any data associated with the command : "switch" could have "0" / "1" etc.
 //                  Use '-' to separate data commands. eg. *.*.*.50-calibrated.*
-//      <len>       Length of message in bytes to provide idea about message loss
-//          |       Indicates end of message.
-void sendMessage(const char *dType = "*", const char *targetId = "*", const char *ack = "*", int state = -1, const char *data = "*")
+//      <len>       Length of message in bytes to provide idea about message loss - This might change to a single byte 
+//                  since we want to contain the message size to 256 bytes
+void sendMessage(const char *Orig = "*",  const char *TargetType = "*" , const char *targetId = "*", const char *cmd = "status"  ,  const char *data = "*")
 {
-    // send back a reply, to the IP address and port we got the packet from
-    char replyPacket[255] = "";
-    char *pReply = replyPacket;
-    char st[1];
-    if (state == -1)
-    {
-        sprintf(st, "*");
-    }
-    sprintf(pReply, "%s^%s%s^%d^%s^000|\0", ack, dType, targetId, state, data);
-    int len = strlen(pReply);
-    sprintf(pReply, "%s^%s%s^%d^%s^%d|\0", ack, dType, targetId, state, data, len);
+    
 
-    int count = 0;
-    for (int i = 0; pReply[i] != '\0'; i++)
-    {
-        count++;
-    }
-    snprintf(pReply, count + 1, pReply);
-    if (enableSerialOutput)
-        Serial.println(pReply);
+    char pReply[255] = "";
+
+    sprintf(pReply, "%s^%s^%s^%s^%s^000|\0", Orig, TargetType, targetId, cmd, data);
+    sprintf(pReply,"%s%d",pReply , strlen(pReply));
+    Serial.println("sendMessage");
+    Serial.println(pReply);
     udpSend(pReply);
 }
 
-void sendMessage(char *msg, char ack = '*')
+void AckMessage(char *msg,bool bACk)
 {
     // send back a reply, to the IP address and port we got the packet from
-    msg[0] = ack;
-
+    if(bACk)
+    {
+        /*
+        msgPack[0] = 
+        msg[0] = ack;
+        */
+    }
     udpSend(msg);
 }
 
 int onReceive(char *incomingPacket)
 {
     int size = udpServer.parsePacket();
+
     if (size == 0)
     {
         incomingPacket[size] = 0;
         return -1;
     }
 
+    //Add the sender to our list - Although we should just send to one server 
+    // we could look at changing the home server with a broadcast command
     if (!checkServerIpList(udpServer.remoteIP(), udpServer.remotePort()))
         addServerIp(udpServer.remoteIP(), udpServer.remotePort());
 
     int len = udpServer.read(incomingPacket, size);
-
-    snprintf(incomingPacket, len + 1, "%s", incomingPacket);
-
-    if (enableSerialOutput)
-        Serial.printf("\n%s\n", incomingPacket);
-
-    if (searchForLength(len, incomingPacket))
-    {
-        sendMessage(incomingPacket, 'A');
-        return 0;
-    }
-    else
-    {
-        sendMessage(incomingPacket, 'N');
-        return 1;
-    }
-
-    return 0;
+    
+    Debug.println("Incoming Pkt");
+    Debug.println(incomingPacket);
+    return size;
 }
 
 char *splitString(int i)
 {
-    if (i >= 5)
+    if (i > 5)
         return nullptr;
 
     char *tmp = msgPack[i];
@@ -366,11 +351,8 @@ char *splitString(int i)
 
 void setMsgPackNull(const char* inputStr = "")
 {
-    for (int i = 0; i < 5; i++)
-    {
-        char* tmp = msgPack[i];
-        sprintf(tmp, inputStr);
-    }
+    for (int i = 0; i < 6; i++)
+        memset( msgPack[i],0,sizeof(msgPack[i]));
 }
 
 #endif // PROTOCOL_H

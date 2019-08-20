@@ -1,9 +1,17 @@
-#include <ESP8266WiFi.h>
-#include <protocol.h>
+#include <RemoteDebug.h>
+#include <RemoteDebugCfg.h>
+#include <RemoteDebugWS.h>
+#include <telnet.h>
+
+
+#include "D:/Git/Home Automation/libraries/Protocol/protocol.h"
 
 #define TX 1
 #define RX 3
 #define GPIO2 2
+
+//limit processing once a command is received
+int iDontProcess = 0;
 
 IPAddress gateway(192, 168, 1, 1);
 IPAddress static_ip(192, 168, 1, 131);
@@ -14,60 +22,81 @@ unsigned long lastDebounceTimeRx = 0; // the last time the output pin was toggle
 unsigned long lastDebounceTimeTx = 0; // the last time the output pin was toggled
 unsigned long debounceDelay = 50;     // the debounce time; increase if the output flickers
 
-unsigned int localUdpPort = 4212;
+//Remote debugging
+#define HOST_NAME "192.168.1.131"
+RemoteDebug Debug;
 
+unsigned int localUdpPort = 11466; // @ her majesty's command
 const char *network_name = "Gunny"; // Remove before making repo public
 const char *passkey = "kippukool";  // Remove before making repo public
 
-char strPack[5][256];
-char incomingPacket[256];
-
 int buttonState;
-
 bool ledState = true;
+int del = 2000;
+bool bTXRead = false;
+long lTXTimer = 0;
+long lRXTimer = 0;
 
-bool rxState = false;
-bool txState = false;
-
-bool prevRxState = false;
+int iPrevTX_01 = 1;
+int iPrevRX_02 = 1;
 bool prevTxState = false;
-
+bool bRead = false;
+char pReply[255] ="";
 void processMessage()
 {
-    char dType[3];
-    memcpy(dType, &strPack[1][0], 2);
-    dType[2] = '\0';
-    char sTid[3];
-    memcpy(sTid, &strPack[1][2], 2);
-    sTid[2] = '\0';
-    int targetId = toInt(sTid);
+    // Keep reading state
+    // if there is a transition then send a message
+    // dont change the state within 2 sec in case we put a toggle switch
+  
+  int i =  digitalRead(TX);
+  if (iPrevTX_01 != i)
+  {
+      //srv^tk^01^switch^0^18
+    iPrevTX_01 = i;
+    sprintf(pReply,"%d",i );
+    Debug.printf(pReply);
+    //sendMessage(const char *Orig = "*",  const char *TargetType = "*" , const char *targetId = "*", const char *cmd = "status"  ,  const char *data = "*")
+    sendMessage("btn","tk","01","switch",pReply);
+    Debug.printf("\n\r ");
+    
+  }
+   i =  digitalRead(RX);
+     if (iPrevRX_02 != i)
+  {
+    iPrevRX_02 = i;
+    sprintf(pReply,"btn^tk^02^switch^%d",i );
+    Debug.printf(pReply);
+    sendMessage("btn","tk","02","switch",pReply);
+    Debug.printf("\n\r ");
+  }
 
-    int iState;
-    bool state = (bool)atoi(strPack[2]);
-    bool status = false;
-    int spd = 0;
-
-    if (strcmp(dType, "tk\0") == 0)
-    {
-        // Serial.println("Returning Tank");
-        iState = atoi(strPack[2]);
-        state = (bool)iState;
-
-        if (targetId == 1)
+  return ;
+  /*
+    if (iPrevTX_01 != digitalRead(TX))
         {
-            digitalWrite(GPIO2, !state);
-            rxState = state;
+            if(!bRead)
+            {
+                lTXTimer =  millis() ;
+                bTXRead = true;
+            }
+            else
+            {
+                bTXRead = false;
+                //Send a message if the toggle happens within 2 sec
+                if((millis() - lTXTimer) < 2000)
+                     sendMessage("*", "01",bTXread "*", rxRead, "st:toggle");        
+                 
+            }
+            
         }
-        else
-        {
-            digitalWrite(GPIO2, !state);
-            txState = state;
-        }
-    }
+    */           
+
 }
 
 void setup()
 {
+    Debug.begin(HOST_NAME);
+    Debug.setSerialEnabled(true);
     pinMode(RX, FUNCTION_3);
     pinMode(TX, FUNCTION_3);
 
@@ -82,29 +111,17 @@ void setup()
 
     setUdpServer(localUdpPort, RemoteIp);
     setupOTA("tksw00", 8266);
+    lTXTimer = millis(); // init the Timer
+    Debug.setResetCmdEnabled(true); 
+    
 }
 
 void loop()
 {
+    
     ArduinoOTA.handle();
 
-    onReceive(incomingPacket);
-    for (int i = 0; i < 5; i++)
-        memcpy(strPack[i], splitString(i), strlen(splitString(i)));
     processMessage();
 
-    int rxRead = digitalRead(RX);
-    int txRead = digitalRead(TX);
-
-    if (rxRead != prevRxState)
-    {
-        sendMessage("tk", "02", "*", rxRead, "st:toggle");
-        prevRxState = rxRead;
-    }
-
-    if (txRead != prevTxState)
-    {
-        sendMessage("tk", "01", "*", txRead, "st:toggle");
-        prevTxState = txRead;
-    }
+    Debug.handle();
 }
