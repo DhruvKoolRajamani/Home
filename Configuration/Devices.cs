@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Gpio;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.SignalR;
 
 // TODO: Convert all populate methods to config file that is loaded.
 
@@ -30,12 +31,31 @@ namespace Devices
         private string mcuRoom;
         private string mcuIPAddress;
         private int mcuUdpPort;
-        private UdpClient microcontrollerUdpClient = null;
+        private IHubContext<Hub> hubContext;
+        protected ILogger _logger;
+        
+
         public int Id { get => mcuId; set => mcuId = value; }
         public string Room { get => mcuRoom; set => mcuRoom = value; }
         public string IPAddress { get => mcuIPAddress; set => mcuIPAddress = value; }
         public int UdpPort { get => mcuUdpPort; set => mcuUdpPort = value; }
-        public UdpClient MUdpClient { get => microcontrollerUdpClient; set => microcontrollerUdpClient = value; }
+
+        
+        public Microcontroller()
+        {
+
+           
+        }
+        protected void SetLogger(ILogger log)
+        {
+            _logger = log;
+        }
+        protected virtual void SendMessage(string msg)
+        {
+        }
+        protected virtual bool ProcessMessage(string message, string Ack = "*") { return true; }
+        protected virtual void Do() { }
+
     }
 
     public class TankStatusChangedEventArgs : EventArgs

@@ -21,39 +21,58 @@ using Microsoft.Extensions.Hosting;
 
 namespace Home.Server.Hubs
 {
-    public class KitchenHub : Hub
+    public interface IKitchenHub
+    {
+        Task GetPumpStates();
+        Task GetVentStates();
+        Task SendAsync(params object[] o );
+        Task ProcessMessage(string[] message);
+
+    }
+    
+    public class KitchenHub : Hub<IKitchenHub>
     {
         //Initialize Repositories for Dependency Injection
         private readonly IKitchenRepo _kitchenRepo;
-        //private readonly IVentMotorRepo _ventMotorRepo;
-        private Kitchen _kitchen;
         private Tank _UpperTank;
         private Tank _LowerTank;
         private Vent _Vent;
         private DHT11 _DHT11;
         protected ILogger _logger;
-
+        private List<Microcontroller> mcus = null;
+        IHostedService ihs;
         //Hub Constructor to store data obtained from constructor call in the repositories
-        public KitchenHub(IKitchenRepo kitchenRepo, IEnumerable<Daemon> daemons, ILogger<KitchenHub> logger) //, IVentMotorRepo ventMotorRepo)
+        public KitchenHub(IKitchenRepo kitchenRepo, ILogger<KitchenHub> logger, IHostedService _ihs) 
         {
             _logger = logger;
             _kitchenRepo = kitchenRepo;
-            _kitchen = (Kitchen)daemons.FirstOrDefault(d => d.CurrentName == nameof(Kitchen));
+            //REMOVE: _kitchen = (Kitchen)daemons.FirstOrDefault(d => d.CurrentName == nameof(Kitchen));
+
             _UpperTank = kitchenRepo.UpperTank;
             _LowerTank = kitchenRepo.LowerTank;
             _Vent = kitchenRepo.ChimneyVent;
             _DHT11 = kitchenRepo.Dht11;
+            ihs = _ihs;
+            FillMicroList();
         }
+        public void FillMicroList()
+        {
+            mcus = new List<Microcontroller>()
+            {
+              //new Microcontroller() {IPAddress = "192.168.1.129", Id = 0, Room = "kitchen", UdpPort = 11466 }
+              new Kitchen(){IPAddress = "192.168.1.129", Id = 0, Room = "kitchen", UdpPort = 11466 }
+            //, new Microcontroller() { IPAddress = "192.168.1.130", Id = 1, Room = "kitchen", UdpPort = 11466}
+            , new Microcontroller() { IPAddress = "192.168.1.131", Id = 2, Room = "kitchen", UdpPort = 11466 }
+            , new Microcontroller() { IPAddress = "192.168.1.140", Id = 0, Room = "living room", UdpPort = 11466}
+            , new Microcontroller() { IPAddress = "192.168.1.141", Id = 1, Room = "living room", UdpPort = 11466 }
+            , new Microcontroller() { IPAddress = "192.168.1.142", Id = 2, Room = "living room", UdpPort = 11466 }
+            };
 
+        }
         public async Task GetPumpStates()
         {
             await Clients.Caller.SendAsync("UpperTankPumpStatus", _kitchenRepo.UpperTank.State);
             await Clients.Caller.SendAsync("LowerTankPumpStatus", _kitchenRepo.LowerTank.State);
-        }
-
-        public async Task GetVentState()
-        {
-            await Clients.Caller.SendAsync("VentStatus", _kitchenRepo.ChimneyVent.State, _kitchenRepo.ChimneyVent.Speed, _kitchenRepo.ChimneyVent.CalibrationState);
         }
 
         public async Task Notification(string message)
@@ -61,26 +80,12 @@ namespace Home.Server.Hubs
             await Clients.Others.SendAsync("TankStatusChanged", message);
         }
 
-        public async Task SetVentState(bool state, int speed, bool calState)
-        {
-            try
-            {
-                _kitchen.SetVentStatus(_kitchenRepo.ChimneyVent.Id, state, speed);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInformation(ex.Message);
-            }
-            await Clients.Caller.SendAsync("VentStatus", _kitchenRepo.ChimneyVent.State, _kitchenRepo.ChimneyVent.Speed, _kitchenRepo.ChimneyVent.CalibrationState);
-        }
-
         public async Task SetUpperTankPumpState(bool upperTankPumpState)
         {
             _kitchenRepo.UpperTank.State = upperTankPumpState;
             _kitchenRepo.UpperTank.RaiseTankStatusChangedEvent(upperTankPumpState);
-            _kitchen.SetTankStatus(_kitchenRepo.UpperTank.Id, upperTankPumpState);
-
-            _logger.LogInformation($"Upper Tank Pump State: {_UpperTank.State}");
+            
+            
 
             await Clients.All.SendAsync("UpperTankPumpStatus", _UpperTank.State);
         }
@@ -89,21 +94,17 @@ namespace Home.Server.Hubs
         {
             _kitchenRepo.LowerTank.State = lowerTankPumpState;
             _kitchenRepo.LowerTank.RaiseTankStatusChangedEvent(lowerTankPumpState);
-            _kitchen.SetTankStatus(_kitchenRepo.LowerTank.Id, lowerTankPumpState);
-
-            _logger.LogInformation($"Lower Tank Pump State: {_LowerTank.State}");
-
             await Clients.All.SendAsync("LowerTankPumpStatus", _LowerTank.State);
         }
 
         public async Task SetUpperTankLevel(float uppertank)
         {
+            
+
+            
             try
             {
                 _UpperTank.Depth = uppertank;
-
-                _logger.LogInformation($"Upper Tank Pump Depth: {_UpperTank.Depth}");
-
                 await Clients.All.SendAsync("Levels", _UpperTank.Depth, _LowerTank.Depth);
             }
             catch (Exception ex)
@@ -111,14 +112,13 @@ namespace Home.Server.Hubs
                 _logger.LogInformation($"Exception in {this} at {LineNumber(ex)} with {ex.Message} of type {ex}");
             }
         }
-
         public async Task SetLowerTankLevel(float lowertank)
         {
             try
             {
                 _LowerTank.Depth = lowertank;
 
-                _logger.LogInformation($"Lower Tank Pump Depth: {_LowerTank.Depth}");
+            //    _logger.LogInformation($"Lower Tank Pump Depth: {_LowerTank.Depth}");
 
                 await Clients.All.SendAsync("Levels", _UpperTank.Depth, _LowerTank.Depth);
             }
@@ -127,15 +127,35 @@ namespace Home.Server.Hubs
                 _logger.LogInformation($"Exception in {this} at {LineNumber(ex)} with {ex.Message} of type {ex}");
             }
         }
-
         public async Task GetTankLevels()
         {
             await Clients.All.SendAsync("Levels", _UpperTank.Depth, _LowerTank.Depth);
         }
-
         public async Task SendWeatherData()
         {
             await Clients.All.SendAsync("WeatherData", _kitchenRepo.Dht11.Temp, _kitchenRepo.Dht11.Humidity);
+        }
+
+        public async Task ProcessMessage(string[] msgPack)
+        {
+            foreach (string s in msgPack)
+                Console.WriteLine(s);
+            await Task.Delay(10);
+
+        }
+    }
+
+    public interface IHome
+    {
+        Task SendMessage(string sMsg);
+        Task SendAsync(params object[] o);
+        
+    }
+    public class HomeHub : Hub<IHome>
+    {
+        public async Task SendMessage(string sMsg)
+        {
+            await Clients.All.SendAsync("ReceiveMsg", sMsg);
         }
     }
 }

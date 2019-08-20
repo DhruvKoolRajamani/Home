@@ -11,161 +11,30 @@ using static Devices.DevicesExtensions;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.AspNetCore.SignalR;
+using Home.Server.Hubs;
+using Home.Server.Repositories;
 
 namespace Home.Server.Daemons
 {
-    public abstract class Daemon : BackgroundService
+    
+    public  class Daemon : BackgroundService
     {
         public string currentName = "";
-        private List<Microcontroller> microcontroller;
-        private Timer timer;
-        public Timer _Timer { get => timer; set => timer = value; }
         protected ILogger _logger;
-        public static bool messageSent = false;
-        private List<UdpClient> mUdpClient = new List<UdpClient>();
+        public ILogger GetLogger{get =>_logger;}
 
-        public List<Microcontroller> Microcontroller { get => microcontroller; set => microcontroller = value; }
-        public List<UdpClient> MUdpClient { get => mUdpClient; set => mUdpClient = value; }
-
-        public virtual string CurrentName { get => currentName; set => currentName = value; }
-
-        public Daemon(List<Microcontroller> micro, ILogger<Daemon> logger)
+        public Daemon(ILogger<Daemon> logger)
         {
             _logger = logger;
-            Microcontroller = micro;
-            foreach (var mcu in Microcontroller)
-            {
-                if (mcu.UdpPort == 0)
-                    throw new DevicesProtocolException("Invalid Port Set");
-                else if (mcu.MUdpClient != null)
-                {
-                    _logger.LogInformation($"Udp Port already exists");
-                }
-                else
-                {
-                    try
-                    {
-                        _logger.LogInformation($"Instantiating UDP Port: {mcu.UdpPort}\n");
-                        Microcontroller.Where(m => (m == mcu)).FirstOrDefault().MUdpClient = new UdpClient(mcu.UdpPort);
-                        MUdpClient.Add(Microcontroller.Where(m => (m == mcu)).FirstOrDefault().MUdpClient);
-                        MUdpClient.Last().BeginReceive(new AsyncCallback(OnUdpData), MUdpClient.Last());
-                    }
-                    catch (SocketException se)
-                    {
-                        _logger.LogInformation($"{se.Message}\n");
-                    }
-                }
-            }
-
-            _Timer = new Timer(timerCallback, null, 5000, 5000);
         }
-
-        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+        
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            try
-            {
-                if (MUdpClient != null)
-                    foreach (var client in MUdpClient)
-                    {
-                        while (!cancellationToken.IsCancellationRequested)
-                        {
-                            try
-                            {
-                                _logger.LogInformation($"{client.ToString()} + {client.Client.RemoteEndPoint}\n");
-                                client.BeginReceive(new AsyncCallback(OnUdpData), client);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogInformation($"\nError: {ex.Message}\n");
-                            }
-                        }
-                    }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogInformation($"Exception in {this.ToString()}, {ex.Source} at {LineNumber(ex)} with Exception: {ex.Message}");
-            }
-
-            await Task.Delay(1000, cancellationToken);
-        }
-        protected IPEndPoint msgSource;
-        public void OnUdpData(IAsyncResult result)
-        {
-            // this is what had been passed into BeginReceive as the second parameter:
-            UdpClient client = result.AsyncState as UdpClient;
-            // points towards whoever had sent the message:
-            IPEndPoint source = new IPEndPoint(IPAddress.Any, 0);
-            // get the actual message and fill out the source:
-            Byte[] receivedBytes = client.EndReceive(result, ref source);
-            var mcu = Microcontroller.Where(m => m.IPAddress == source.Address.ToString()).FirstOrDefault();
-            msgSource = source;
-            // do what you'd like with `message` here:
-            string message = Encoding.ASCII.GetString(receivedBytes);
-            // _logger.LogInformation($"Do Something with : {message}");
-            if (message[0] == 'N')
-            {
-                // NACK received
-                var msg = message.Replace("N^", "*^");
-                SendMessage(mcu.Room, mcu.Id, msg);
-            }
-            else if (message[0] == '*')
-            {
-                // Process Message as MCU to Server message
-                ProcessMessage(message);
-            }
-            else if (message[0] == 'A')
-            {
-                ProcessMessage(message, "A");
-                messageSent = false;
-            }
-            else
-            {
-                string ex = "Invalid response from client";
-                _logger.LogInformation($"{ex}");
-                throw new DevicesProtocolException(ex);
-            }
-
-            // schedule the next receive operation once reading is done:
-            client.BeginReceive(new AsyncCallback(OnUdpData), client);
+            while (!stoppingToken.IsCancellationRequested)
+                await Task.Delay(200);
         }
 
-        public void SendMessage(string room, int id, string msg = "")
-        {
-            var mcu = Microcontroller.Where(m => (m.Room == room) && (m.Id == id)).FirstOrDefault();
-            // schedule the first receive operation:
-            mcu.MUdpClient.BeginReceive(new AsyncCallback(OnUdpData), mcu.MUdpClient);
-
-            IPEndPoint target = new IPEndPoint(IPAddress.Parse(mcu.IPAddress), mcu.UdpPort);
-            Byte[] sendBytes = Encoding.ASCII.GetBytes(msg);
-            mcu.MUdpClient.Send(sendBytes, sendBytes.Length, target);
-            _logger.LogInformation($"Sent \n{Encoding.ASCII.GetString(sendBytes)}");
-            _logger.LogInformation($"\nPacket Size: {sendBytes.Length}\n");
-            messageSent = true;
-        }
-
-        protected virtual async void timerCallback(object state) { }
-
-        protected virtual bool ProcessMessage(string message, string Ack = "*") { return true; }
-
-        public void SendAllMessage(string msg)
-        {
-            foreach (var mcu in Microcontroller)
-            {
-                SendMessage(mcu.Room, mcu.Id, msg);
-            }
-        }
-
-        public void SendGroupMessage(string msg, Tuple<string, int> Mcu0, Tuple<string, int> Mcu1 = null, Tuple<string, int> Mcu2 = null)
-        {
-            SendMessage(Mcu0.Item1, Mcu0.Item2, msg);
-            if (Mcu1 != null)
-            {
-                SendMessage(Mcu1.Item1, Mcu1.Item2, msg);
-            }
-            if (Mcu2 != null)
-            {
-                SendMessage(Mcu2.Item1, Mcu2.Item2, msg);
-            }
-        }
+       
     }
 }

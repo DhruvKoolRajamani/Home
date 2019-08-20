@@ -1,8 +1,8 @@
 {
     "board": "esp8266:esp8266:generic",
-    "configuration": "xtal=80,vt=flash,exception=disabled,ssl=all,ResetMethod=ck,CrystalFreq=26,FlashFreq=40,FlashMode=dout,eesz=1M,led=2,sdk=nonosdk221,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=115200",
     "output": "build",
-    "programmer": "USBasp",
-    "port": "/dev/ttyUSB0",
-    "sketch": "LivingRoom/Arduino/LightSwitch/LightSwitch.ino"
+    "programmer": "ArduinoISP",
+    "port": "COM3",
+    "sketch": "Kitchen\\Arduino\\kitchen\\kitchen.ino",
+    "configuration": "xtal=80,vt=flash,exception=disabled,ssl=all,ResetMethod=ck,CrystalFreq=26,FlashFreq=40,FlashMode=dout,eesz=4M1M,led=2,sdk=nonosdk221,ip=lm2f,dbg=Serial,lvl=None____,wipe=none,baud=115200"
 }

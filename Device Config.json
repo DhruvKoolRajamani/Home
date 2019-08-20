@@ -1,0 +1,32 @@
+{
+
+  "devices": [
+    {
+      "ID": 5,
+      "IPAddress": "192.168.1.6",
+      "Port": 23705,
+      "Room": "Kitchen",
+      "Type": "Switch"
+    },
+    {
+      "ID": 6,
+      "IPAddress": "192.168.1.7",
+      "Port": 23705,
+      "Room": "Bedroom",
+      "Type": "Button"
+    }
+  ]
+}
+
+/*
+        private int mcuId;
+        private string mcuRoom;
+        private string mcuIPAddress;
+        private int mcuUdpPort;
+        private UdpClient microcontrollerUdpClient = null;
+        public int Id { get => mcuId; set => mcuId = value; }
+        public string Room { get => mcuRoom; set => mcuRoom = value; }
+        public string IPAddress { get => mcuIPAddress; set => mcuIPAddress = value; }
+        public int UdpPort { get => mcuUdpPort; set => mcuUdpPort = value; }
+
+*/
